@@ -41,6 +41,7 @@
                     <button class="nav-link" id="products-tab" data-bs-toggle="pill" data-bs-target="#products" type="button" role="tab"><i class="fas fa-utensils"></i> Ürünler</button>
                     <button class="nav-link" id="orders-tab" data-bs-toggle="pill" data-bs-target="#orders" type="button" role="tab"><i class="fas fa-receipt"></i> Siparişler</button>
                     <button class="nav-link" id="order-history-tab" data-bs-toggle="pill" data-bs-target="#order-history" type="button" role="tab"><i class="fas fa-history"></i> Sipariş Geçmişi</button>
+                    <button class="nav-link" id="online-orders-tab" data-bs-toggle="pill" data-bs-target="#online-orders" type="button" role="tab"><i class="fas fa-globe"></i> Online Siparişler</button>
                 </div>
             </div>
             
@@ -243,6 +244,75 @@
                             <!-- Order history will be loaded here dynamically -->
                         </div>
                     </div>
+                    
+                    <!-- Online Orders Tab -->
+                    <div class="tab-pane fade" id="online-orders" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                            <h2><i class="fas fa-globe"></i> Online Siparişler</h2>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-primary" id="apiSettingsBtn">
+                                    <i class="fas fa-cog"></i> API Ayarları
+                                </button>
+                                <button class="btn btn-warning" id="showPlatformStatusBtn">
+                                    <i class="fas fa-info-circle"></i> Platform Durumu
+                                </button>
+                                <button class="btn btn-info" id="manageProductMappingBtn">
+                                    <i class="fas fa-link"></i> Ürün Eşleştirme
+                                </button>
+                                <button class="btn btn-success" id="fetchOnlineOrdersBtn">
+                                    <i class="fas fa-sync"></i> Yeni Siparişleri Çek
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Platform kartları -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="platform-card trendyol" id="trendyolCard">
+                                    <div class="platform-logo">
+                                        <i class="fas fa-shopping-bag"></i>
+                                    </div>
+                                    <div class="platform-name">Trendyol Go</div>
+                                    <div class="platform-status" id="trendyolStatus">Yapılandırılıyor...</div>
+                                    <button class="btn btn-primary w-100 mt-3" data-platform="trendyol">
+                                        <i class="fas fa-download"></i> Siparişleri Çek
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="platform-card yemeksepeti" id="yemeksepetiCard">
+                                    <div class="platform-logo">
+                                        <i class="fas fa-utensils"></i>
+                                    </div>
+                                    <div class="platform-name">Yemek Sepeti</div>
+                                    <div class="platform-status" id="yemeksepetiStatus">Yapılandırılıyor...</div>
+                                    <button class="btn btn-primary w-100 mt-3" data-platform="yemeksepeti">
+                                        <i class="fas fa-download"></i> Siparişleri Çek
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="platform-card getir" id="getirCard">
+                                    <div class="platform-logo">
+                                        <i class="fas fa-motorcycle"></i>
+                                    </div>
+                                    <div class="platform-name">Getir</div>
+                                    <div class="platform-status" id="getirStatus">Yapılandırılıyor...</div>
+                                    <button class="btn btn-primary w-100 mt-3" data-platform="getir">
+                                        <i class="fas fa-download"></i> Siparişleri Çek
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bekleyen online siparişler -->
+                        <div class="row" id="onlineOrdersContainer">
+                            <div class="col-12 text-center text-muted py-5">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p>Henüz online sipariş yok. "Yeni Siparişleri Çek" butonuna tıklayın.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -335,6 +405,114 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary" id="saveProductBtn">Ürün Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Settings Modal -->
+    <div class="modal fade" id="apiSettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-cog"></i> API Ayarları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Bilgi:</strong> API key'lerinizi buraya girin. Bu bilgiler tarayıcınızda güvenli şekilde saklanır.
+                        API key almak için platform panellerinize giriş yapın.
+                    </div>
+                    
+                    <!-- Trendyol Go -->
+                    <div class="card mb-3 border-warning">
+                        <div class="card-header bg-warning bg-opacity-10">
+                            <h6 class="mb-0"><i class="fas fa-shopping-bag"></i> Trendyol Go by Uber Eats</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="trendyolApiKey" class="form-label">API Key</label>
+                                <input type="text" class="form-control" id="trendyolApiKey" placeholder="API Key'inizi girin">
+                            </div>
+                            <div class="mb-3">
+                                <label for="trendyolRestaurantId" class="form-label">Restaurant ID</label>
+                                <input type="text" class="form-control" id="trendyolRestaurantId" placeholder="Restaurant ID'nizi girin">
+                            </div>
+                            <div class="mb-0">
+                                <label for="trendyolWebhookSecret" class="form-label">Webhook Secret (Opsiyonel)</label>
+                                <input type="text" class="form-control" id="trendyolWebhookSecret" placeholder="Webhook secret">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Yemeksepeti -->
+                    <div class="card mb-3 border-danger">
+                        <div class="card-header bg-danger bg-opacity-10">
+                            <h6 class="mb-0"><i class="fas fa-utensils"></i> Yemeksepeti</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="yemeksepetiApiKey" class="form-label">API Key</label>
+                                <input type="text" class="form-control" id="yemeksepetiApiKey" placeholder="API Key'inizi girin">
+                            </div>
+                            <div class="mb-3">
+                                <label for="yemeksepetiRestaurantId" class="form-label">Restaurant ID</label>
+                                <input type="text" class="form-control" id="yemeksepetiRestaurantId" placeholder="Restaurant ID'nizi girin">
+                            </div>
+                            <div class="mb-0">
+                                <label for="yemeksepetiWebhookSecret" class="form-label">Webhook Secret (Opsiyonel)</label>
+                                <input type="text" class="form-control" id="yemeksepetiWebhookSecret" placeholder="Webhook secret">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Getir -->
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary bg-opacity-10">
+                            <h6 class="mb-0"><i class="fas fa-motorcycle"></i> Getir</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="getirApiKey" class="form-label">API Key</label>
+                                <input type="text" class="form-control" id="getirApiKey" placeholder="API Key'inizi girin">
+                            </div>
+                            <div class="mb-3">
+                                <label for="getirRestaurantId" class="form-label">Restaurant ID</label>
+                                <input type="text" class="form-control" id="getirRestaurantId" placeholder="Restaurant ID'nizi girin">
+                            </div>
+                            <div class="mb-0">
+                                <label for="getirWebhookSecret" class="form-label">Webhook Secret (Opsiyonel)</label>
+                                <input type="text" class="form-control" id="getirWebhookSecret" placeholder="Webhook secret">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Webhook Ayarları -->
+                    <div class="card mb-0 border-secondary">
+                        <div class="card-header bg-secondary bg-opacity-10">
+                            <h6 class="mb-0"><i class="fas fa-server"></i> Webhook Ayarları</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="webhookEnabled">
+                                <label class="form-check-label" for="webhookEnabled">
+                                    Webhook Server'ı Aktif Et (Otomatik sipariş bildirimi için)
+                                </label>
+                            </div>
+                            <div class="mb-0">
+                                <label for="webhookPort" class="form-label">Webhook Port</label>
+                                <input type="number" class="form-control" id="webhookPort" placeholder="3000" value="3000">
+                                <small class="text-muted">Webhook URL: http://localhost:[port]/webhook/[platform]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="saveApiSettingsBtn">
+                        <i class="fas fa-save"></i> Kaydet ve Yeniden Başlat
+                    </button>
                 </div>
             </div>
         </div>

@@ -46,6 +46,10 @@ $(document).ready(function() {
         loadOrderHistory();
     });
     
+    $('#online-orders-tab').on('click', function() {
+        loadOnlineOrders();
+    });
+    
     $('#dashboard-tab').on('click', function() {
         loadDashboard();
     });
@@ -69,6 +73,26 @@ $(document).ready(function() {
     
     $('#bulkStockEntryBtn').on('click', function() {
         bulkStockEntry();
+    });
+    
+    $('#apiSettingsBtn').on('click', function() {
+        openApiSettings();
+    });
+    
+    $('#showPlatformStatusBtn').on('click', function() {
+        showPlatformStatus();
+    });
+    
+    $('#manageProductMappingBtn').on('click', function() {
+        manageProductMapping();
+    });
+    
+    $('#fetchOnlineOrdersBtn').on('click', function() {
+        fetchAllPlatformOrders();
+    });
+    
+    $('#saveApiSettingsBtn').on('click', function() {
+        saveApiSettings();
     });
     
     // Event listeners for save buttons
@@ -3019,6 +3043,374 @@ async function bulkStockEntry() {
             icon: 'error',
             title: 'Hata',
             text: 'Stok girişi yapılırken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// ==================== ONLINE SİPARİŞ FONKSİYONLARI ====================
+
+// API Ayarlarını Aç
+async function openApiSettings() {
+    try {
+        // Mevcut ayarları yükle
+        const settings = getApiSettings();
+        
+        // Form alanlarını doldur
+        $('#trendyolApiKey').val(settings.trendyol.apiKey || '');
+        $('#trendyolRestaurantId').val(settings.trendyol.restaurantId || '');
+        $('#trendyolWebhookSecret').val(settings.trendyol.webhookSecret || '');
+        
+        $('#yemeksepetiApiKey').val(settings.yemeksepeti.apiKey || '');
+        $('#yemeksepetiRestaurantId').val(settings.yemeksepeti.restaurantId || '');
+        $('#yemeksepetiWebhookSecret').val(settings.yemeksepeti.webhookSecret || '');
+        
+        $('#getirApiKey').val(settings.getir.apiKey || '');
+        $('#getirRestaurantId').val(settings.getir.restaurantId || '');
+        $('#getirWebhookSecret').val(settings.getir.webhookSecret || '');
+        
+        $('#webhookEnabled').prop('checked', settings.webhook.enabled || false);
+        $('#webhookPort').val(settings.webhook.port || 3000);
+        
+        // Modalı aç
+        const modal = new bootstrap.Modal(document.getElementById('apiSettingsModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error opening API settings:', error);
+    }
+}
+
+// API Ayarlarını Kaydet
+async function saveApiSettings() {
+    try {
+        const settings = {
+            trendyol: {
+                apiKey: $('#trendyolApiKey').val().trim(),
+                restaurantId: $('#trendyolRestaurantId').val().trim(),
+                webhookSecret: $('#trendyolWebhookSecret').val().trim()
+            },
+            yemeksepeti: {
+                apiKey: $('#yemeksepetiApiKey').val().trim(),
+                restaurantId: $('#yemeksepetiRestaurantId').val().trim(),
+                webhookSecret: $('#yemeksepetiWebhookSecret').val().trim()
+            },
+            getir: {
+                apiKey: $('#getirApiKey').val().trim(),
+                restaurantId: $('#getirRestaurantId').val().trim(),
+                webhookSecret: $('#getirWebhookSecret').val().trim()
+            },
+            webhook: {
+                enabled: $('#webhookEnabled').is(':checked'),
+                port: parseInt($('#webhookPort').val()) || 3000
+            }
+        };
+        
+        // LocalStorage'a kaydet
+        localStorage.setItem('apiSettings', JSON.stringify(settings));
+        
+        // .env dosyasını oluştur/güncelle (bilgilendirme)
+        const envContent = generateEnvContent(settings);
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Ayarlar Kaydedildi',
+            html: `
+                <div class="text-start">
+                    <p><strong>API ayarları kaydedildi!</strong></p>
+                    <p>Ayarların aktif olması için uygulamayı yeniden başlatmanız gerekiyor.</p>
+                    <hr>
+                    <p><strong>Alternatif Yöntem (Önerilen):</strong></p>
+                    <p>Proje klasöründe <code>.env</code> dosyası oluşturup aşağıdaki içeriği yapıştırın:</p>
+                    <textarea class="form-control" rows="10" readonly>${envContent}</textarea>
+                    <small class="text-muted">Bu ayarlar localStorage'da da saklandı ve sonraki kullanımlar için hazır.</small>
+                </div>
+            `,
+            width: '700px',
+            confirmButtonText: 'Tamam',
+            showCancelButton: true,
+            cancelButtonText: 'İçeriği Kopyala',
+            preConfirm: () => {
+                return true;
+            }
+        }).then((result) => {
+            if (result.dismiss === Swal.DismissReason.cancel) {
+                // Kopyala butonuna tıklandı
+                navigator.clipboard.writeText(envContent);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Kopyalandı!',
+                    text: '.env dosyanıza yapıştırabilirsiniz',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
+        
+        // Modalı kapat
+        const modal = bootstrap.Modal.getInstance(document.getElementById('apiSettingsModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+    } catch (error) {
+        console.error('Error saving API settings:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Ayarlar kaydedilirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// API Ayarlarını Getir
+function getApiSettings() {
+    const defaultSettings = {
+        trendyol: { apiKey: '', restaurantId: '', webhookSecret: '' },
+        yemeksepeti: { apiKey: '', restaurantId: '', webhookSecret: '' },
+        getir: { apiKey: '', restaurantId: '', webhookSecret: '' },
+        webhook: { enabled: false, port: 3000 }
+    };
+    
+    const stored = localStorage.getItem('apiSettings');
+    if (stored) {
+        try {
+            return { ...defaultSettings, ...JSON.parse(stored) };
+        } catch (e) {
+            return defaultSettings;
+        }
+    }
+    return defaultSettings;
+}
+
+// .env içeriği oluştur
+function generateEnvContent(settings) {
+    return `# Veritabanı Ayarları
+DB_DIALECT=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=pos_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Trendyol Go API
+TRENDYOL_API_URL=https://tgoapps-external-api.trendyol.com
+TRENDYOL_API_KEY=${settings.trendyol.apiKey}
+TRENDYOL_RESTAURANT_ID=${settings.trendyol.restaurantId}
+TRENDYOL_WEBHOOK_SECRET=${settings.trendyol.webhookSecret}
+
+# Yemeksepeti API
+YEMEKSEPETI_API_URL=https://integration.yemeksepeti.com/api/v1
+YEMEKSEPETI_API_KEY=${settings.yemeksepeti.apiKey}
+YEMEKSEPETI_RESTAURANT_ID=${settings.yemeksepeti.restaurantId}
+YEMEKSEPETI_WEBHOOK_SECRET=${settings.yemeksepeti.webhookSecret}
+
+# Getir API
+GETIR_API_URL=https://api.getir.com/food/v1
+GETIR_API_KEY=${settings.getir.apiKey}
+GETIR_RESTAURANT_ID=${settings.getir.restaurantId}
+GETIR_WEBHOOK_SECRET=${settings.getir.webhookSecret}
+
+# Webhook Server
+WEBHOOK_ENABLED=${settings.webhook.enabled}
+WEBHOOK_PORT=${settings.webhook.port}`;
+}
+
+// Load online orders
+async function loadOnlineOrders() {
+    try {
+        // Platform durumlarını yükle
+        const platforms = await window.api.getPlatformStatus();
+        
+        platforms.forEach(platform => {
+            const statusEl = $(`#${platform.platform}Status`);
+            if (platform.enabled) {
+                statusEl.text('Aktif').addClass('active').removeClass('inactive');
+            } else {
+                statusEl.text('Pasif (API key eksik)').addClass('inactive').removeClass('active');
+            }
+        });
+        
+        // Online siparişleri yükle
+        const onlineOrders = await window.api.getOnlineOrders();
+        const container = $('#onlineOrdersContainer');
+        container.empty();
+        
+        if (onlineOrders.length === 0) {
+            container.html(`
+                <div class="col-12 text-center text-muted py-5">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>Henüz online sipariş yok.</p>
+                </div>
+            `);
+            return;
+        }
+        
+        // Online siparişleri göster
+        // TODO: Kart tasarımı yapılacak
+        
+    } catch (error) {
+        console.error('Error loading online orders:', error);
+    }
+}
+
+// Platform durumunu göster
+async function showPlatformStatus() {
+    try {
+        const platforms = await window.api.getPlatformStatus();
+        
+        let statusHtml = '<div class="list-group">';
+        platforms.forEach(platform => {
+            const statusClass = platform.enabled ? 'success' : 'danger';
+            const statusIcon = platform.enabled ? 'check-circle' : 'times-circle';
+            const statusText = platform.enabled ? 'Aktif' : 'Pasif';
+            
+            statusHtml += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${platform.name}</h6>
+                            <small class="text-muted">
+                                API Key: ${platform.hasApiKey ? '✓' : '✗'} | 
+                                Restaurant ID: ${platform.hasRestaurantId ? '✓' : '✗'}
+                            </small>
+                        </div>
+                        <span class="badge bg-${statusClass}">
+                            <i class="fas fa-${statusIcon}"></i> ${statusText}
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+        statusHtml += '</div>';
+        
+        await Swal.fire({
+            title: 'Platform Durumu',
+            html: statusHtml,
+            width: '600px',
+            confirmButtonText: 'Tamam',
+            footer: '<small>API key eklemek için .env dosyasını düzenleyin</small>'
+        });
+        
+    } catch (error) {
+        console.error('Error showing platform status:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Platform durumu alınamadı',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Ürün eşleştirme yönetimi
+async function manageProductMapping() {
+    try {
+        const products = await window.api.getProducts();
+        
+        if (products.length === 0) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'Bilgi',
+                text: 'Önce ürün ekleyin',
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        await Swal.fire({
+            title: 'Ürün Eşleştirme',
+            html: `
+                <div class="alert alert-info text-start">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Önemli:</strong> Platform'daki ürün adları ile POS'taki ürünlerinizi eşleştirin.
+                </div>
+                <p class="text-start mb-3">Eşleştirme işlemi için platformlardan gelen ilk siparişi bekleyin veya manuel olarak ekleyin.</p>
+                <div class="text-start">
+                    <h6>Mevcut Ürünler:</h6>
+                    <ul class="list-group">
+                        ${products.map(p => `<li class="list-group-item">${p.name} - ₺${p.price}</li>`).join('')}
+                    </ul>
+                </div>
+            `,
+            width: '700px',
+            confirmButtonText: 'Tamam'
+        });
+        
+    } catch (error) {
+        console.error('Error in product mapping:', error);
+    }
+}
+
+// Tüm platformlardan sipariş çek
+async function fetchAllPlatformOrders() {
+    try {
+        const platforms = await window.api.getPlatformStatus();
+        const activePlatforms = platforms.filter(p => p.enabled);
+        
+        if (activePlatforms.length === 0) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Uyarı',
+                html: `
+                    <p>Hiçbir platform aktif değil.</p>
+                    <p class="mb-0">Lütfen .env dosyasına API key'lerinizi ekleyin.</p>
+                `,
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        // Loading göster
+        Swal.fire({
+            title: 'Siparişler Çekiliyor...',
+            html: 'Platformlardan yeni siparişler kontrol ediliyor',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        let totalOrders = 0;
+        
+        // Her aktif platformdan sipariş çek
+        for (const platform of activePlatforms) {
+            try {
+                const orders = await window.api.fetchPlatformOrders(platform.platform);
+                if (orders && orders.length > 0) {
+                    totalOrders += orders.length;
+                    // Siparişleri işle
+                    console.log(`${platform.name} - ${orders.length} yeni sipariş`);
+                }
+            } catch (error) {
+                console.error(`${platform.name} sipariş çekme hatası:`, error);
+            }
+        }
+        
+        Swal.close();
+        
+        await Swal.fire({
+            icon: totalOrders > 0 ? 'success' : 'info',
+            title: totalOrders > 0 ? 'Yeni Siparişler!' : 'Bilgi',
+            text: totalOrders > 0 ? `${totalOrders} yeni sipariş bulundu` : 'Yeni sipariş bulunamadı',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        
+        if (totalOrders > 0) {
+            loadOnlineOrders();
+            loadOrders();
+            loadDashboard();
+        }
+        
+    } catch (error) {
+        console.error('Error fetching platform orders:', error);
+        Swal.close();
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: error.message || 'Siparişler çekilirken hata oluştu',
             confirmButtonText: 'Tamam'
         });
     }

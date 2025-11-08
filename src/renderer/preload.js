@@ -34,5 +34,15 @@ contextBridge.exposeInMainWorld('api', {
   // Stock operations
   updateProductStock: (productId, quantity) => ipcRenderer.invoke('update-product-stock', productId, quantity),
   decreaseProductStock: (productId, quantity) => ipcRenderer.invoke('decrease-product-stock', productId, quantity),
-  getLowStockProducts: () => ipcRenderer.invoke('get-low-stock-products')
+  getLowStockProducts: () => ipcRenderer.invoke('get-low-stock-products'),
+  
+  // Platform/Online order operations
+  getPlatformStatus: () => ipcRenderer.invoke('get-platform-status'),
+  fetchPlatformOrders: (platform) => ipcRenderer.invoke('fetch-platform-orders', platform),
+  acceptPlatformOrder: (platform, orderId) => ipcRenderer.invoke('accept-platform-order', platform, orderId),
+  createOnlineOrder: (orderData) => ipcRenderer.invoke('create-online-order', orderData),
+  getOnlineOrders: () => ipcRenderer.invoke('get-online-orders'),
+  getProductMappings: (platform) => ipcRenderer.invoke('get-product-mappings', platform),
+  createProductMapping: (mappingData) => ipcRenderer.invoke('create-product-mapping', mappingData),
+  deleteProductMapping: (mappingId) => ipcRenderer.invoke('delete-product-mapping', mappingId)
 });

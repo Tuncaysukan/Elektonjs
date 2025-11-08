@@ -2,9 +2,30 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const url = require('url');
 const Database = require('../database/database');
+const PlatformService = require('../services/platformService');
+const WebhookServer = require('../services/webhookServer');
 
 // Initialize database
 const database = new Database();
+
+// Initialize platform services
+let platformService;
+let webhookServer;
+
+// Webhook server'ı başlat (opsiyonel)
+const WEBHOOK_ENABLED = process.env.WEBHOOK_ENABLED === 'true';
+const WEBHOOK_PORT = process.env.WEBHOOK_PORT || 3000;
+
+setTimeout(() => {
+  platformService = new PlatformService(database);
+  
+  if (WEBHOOK_ENABLED) {
+    webhookServer = new WebhookServer(platformService, WEBHOOK_PORT);
+    webhookServer.start().catch(err => {
+      console.error('Webhook server başlatılamadı:', err);
+    });
+  }
+}, 3000);
 
 let mainWindow;
 
@@ -139,4 +160,66 @@ ipcMain.handle('decrease-product-stock', async (event, productId, quantity) => {
 
 ipcMain.handle('get-low-stock-products', async (event) => {
   return await database.getLowStockProducts();
+});
+
+// Platform/Online sipariş API'leri
+ipcMain.handle('get-platform-status', async (event) => {
+  return platformService ? platformService.getPlatformStatus() : [];
+});
+
+ipcMain.handle('fetch-platform-orders', async (event, platform) => {
+  if (!platformService) {
+    throw new Error('Platform service henüz hazır değil');
+  }
+  
+  switch(platform) {
+    case 'trendyol':
+      return await platformService.fetchTrendyolOrders();
+    default:
+      throw new Error('Desteklenmeyen platform');
+  }
+});
+
+ipcMain.handle('accept-platform-order', async (event, platform, orderId) => {
+  if (!platformService) {
+    throw new Error('Platform service henüz hazır değil');
+  }
+  
+  switch(platform) {
+    case 'trendyol':
+      return await platformService.acceptTrendyolOrder(orderId);
+    default:
+      throw new Error('Desteklenmeyen platform');
+  }
+});
+
+ipcMain.handle('create-online-order', async (event, orderData) => {
+  if (!platformService) {
+    throw new Error('Platform service henüz hazır değil');
+  }
+  return await platformService.createOnlineOrder(orderData);
+});
+
+ipcMain.handle('get-online-orders', async (event) => {
+  return await database.OnlineOrder.findAll({ 
+    include: [{ model: database.Order }],
+    raw: false 
+  });
+});
+
+ipcMain.handle('get-product-mappings', async (event, platform) => {
+  const where = platform ? { platform } : {};
+  return await database.ProductMapping.findAll({ 
+    where,
+    include: [{ model: database.Product }],
+    raw: false 
+  });
+});
+
+ipcMain.handle('create-product-mapping', async (event, mappingData) => {
+  return await database.ProductMapping.create(mappingData);
+});
+
+ipcMain.handle('delete-product-mapping', async (event, mappingId) => {
+  return await database.ProductMapping.destroy({ where: { id: mappingId } });
 });

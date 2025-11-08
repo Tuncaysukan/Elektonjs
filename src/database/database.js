@@ -123,6 +123,99 @@ class Database {
       updatedAt: 'updated_at'
     });
     
+    // Define OnlineOrder model (3. parti platform siparişleri)
+    this.OnlineOrder = this.sequelize.define('OnlineOrder', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      platform: {
+        type: DataTypes.ENUM('trendyol', 'yemeksepeti', 'getir'),
+        allowNull: false
+      },
+      platformOrderId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        field: 'platform_order_id'
+      },
+      orderId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'order_id'
+      },
+      customerName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'customer_name'
+      },
+      customerPhone: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'customer_phone'
+      },
+      deliveryAddress: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'delivery_address'
+      },
+      platformStatus: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'platform_status'
+      },
+      rawData: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'raw_data'
+      }
+    }, {
+      tableName: 'online_orders',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
+    });
+    
+    // Define ProductMapping model (Ürün eşleştirme)
+    this.ProductMapping = this.sequelize.define('ProductMapping', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      platform: {
+        type: DataTypes.ENUM('trendyol', 'yemeksepeti', 'getir'),
+        allowNull: false
+      },
+      platformProductId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        field: 'platform_product_id'
+      },
+      platformProductName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        field: 'platform_product_name'
+      },
+      localProductId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        field: 'local_product_id'
+      }
+    }, {
+      tableName: 'product_mappings',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      indexes: [
+        {
+          unique: true,
+          fields: ['platform', 'platform_product_id']
+        }
+      ]
+    });
+    
     // Define User model
     this.User = this.sequelize.define('User', {
       id: {
@@ -191,6 +284,8 @@ class Database {
     this.Order.belongsTo(this.Table, { foreignKey: 'table_id' });
     this.OrderItem.belongsTo(this.Order, { foreignKey: 'order_id' });
     this.OrderItem.belongsTo(this.Product, { foreignKey: 'product_id' });
+    this.OnlineOrder.belongsTo(this.Order, { foreignKey: 'order_id' });
+    this.ProductMapping.belongsTo(this.Product, { foreignKey: 'local_product_id' });
     
     // Sync models with database
     await this.sequelize.sync({ alter: true });

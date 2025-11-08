@@ -66,6 +66,19 @@ Restoran ve kafeler için geliştirilmiş, dokunmatik ekran desteği olan modern
 - Touch feedback animasyonları
 - Tek kişilik kullanım için optimize edilmiş
 
+### 🌐 Online Sipariş Entegrasyonu
+- **Trendyol Go** by Uber Eats entegrasyonu
+- **Yemeksepeti** entegrasyonu
+- **Getir** entegrasyonu
+- API ile otomatik sipariş çekme
+- Webhook desteği (gerçek zamanlı bildirim)
+- Ürün eşleştirme sistemi
+- Otomatik stok düşürme
+- Platform bazlı raporlama
+- Manuel sipariş onaylama
+
+> **Not**: Online sipariş özelliği için platformlardan API key almanız gerekir. Detaylı kurulum için `API_REHBERI.md` dosyasına bakın.
+
 ## 🛠️ Teknolojiler
 
 - **Electron.js**: Masaüstü uygulama framework'ü
@@ -97,6 +110,16 @@ DB_PORT=5432
 DB_NAME=pos_db
 DB_USER=postgres
 DB_PASSWORD=your_password
+
+# Online sipariş entegrasyonu (opsiyonel)
+TRENDYOL_API_KEY=
+TRENDYOL_RESTAURANT_ID=
+YEMEKSEPETI_API_KEY=
+YEMEKSEPETI_RESTAURANT_ID=
+GETIR_API_KEY=
+GETIR_RESTAURANT_ID=
+WEBHOOK_ENABLED=false
+WEBHOOK_PORT=3000
 ```
 
 3. Uygulamayı başlatın:
@@ -151,10 +174,12 @@ npm run dev
 
 ### Tablolar
 - **tables**: Restoran masaları
-- **products**: Menü ürünleri (kategori ile)
+- **products**: Menü ürünleri (kategori, stok ile)
 - **orders**: Siparişler (durum, ödeme, not)
 - **order_items**: Sipariş kalemleri
 - **users**: Kullanıcılar (giriş sistemi)
+- **online_orders**: Online platform siparişleri
+- **product_mappings**: Platform ürün eşleştirmeleri
 
 ### İlişkiler
 - Order → Table (Bir sipariş bir masaya ait)

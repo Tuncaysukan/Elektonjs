@@ -307,6 +307,86 @@ body {
     font-size: 1.1rem;
 }
 
+/* Platform kartları */
+.platform-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.platform-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.platform-card.trendyol {
+    border-color: #ff6000;
+}
+
+.platform-card.yemeksepeti {
+    border-color: #f43b47;
+}
+
+.platform-card.getir {
+    border-color: #5d3ebc;
+}
+
+.platform-card .platform-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+}
+
+.platform-card.trendyol .platform-logo {
+    background: linear-gradient(135deg, #ff6000, #ff8c42);
+    color: white;
+}
+
+.platform-card.yemeksepeti .platform-logo {
+    background: linear-gradient(135deg, #f43b47, #f76b1c);
+    color: white;
+}
+
+.platform-card.getir .platform-logo {
+    background: linear-gradient(135deg, #5d3ebc, #7c4dff);
+    color: white;
+}
+
+.platform-card .platform-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 10px;
+}
+
+.platform-card .platform-status {
+    font-size: 0.95rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.platform-card .platform-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.platform-card .platform-status.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
 .product-card .product-actions {
     margin-top: auto;
     display: flex;
