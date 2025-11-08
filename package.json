@@ -1,0 +1,30 @@
+{
+  "name": "elektonjs",
+  "version": "1.0.0",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "nodemon --exec electron .",
+    "migrate": "node src/migrations/run-migrations.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "dotenv": "^17.2.3",
+    "electron": "^39.1.1",
+    "jquery": "^3.7.1",
+    "mysql2": "^3.15.3",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "popper.js": "^1.16.1",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

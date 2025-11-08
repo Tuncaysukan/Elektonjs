@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern POS Sistemi</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1><i class="fas fa-cash-register"></i> Modern POS Sistemi</h1>
+                    <div class="user-info">
+                        <span class="me-3"><i class="fas fa-user-circle"></i> <span id="currentUserName">Kullanıcı</span></span>
+                        <button class="btn btn-light btn-sm" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <div class="col-md-2 sidebar">
+                <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    <button class="nav-link active" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboard" type="button" role="tab"><i class="fas fa-chart-line"></i> Dashboard</button>
+                    <button class="nav-link" id="tables-tab" data-bs-toggle="pill" data-bs-target="#tables" type="button" role="tab"><i class="fas fa-table"></i> Masalar</button>
+                    <button class="nav-link" id="products-tab" data-bs-toggle="pill" data-bs-target="#products" type="button" role="tab"><i class="fas fa-utensils"></i> Ürünler</button>
+                    <button class="nav-link" id="orders-tab" data-bs-toggle="pill" data-bs-target="#orders" type="button" role="tab"><i class="fas fa-receipt"></i> Siparişler</button>
+                    <button class="nav-link" id="order-history-tab" data-bs-toggle="pill" data-bs-target="#order-history" type="button" role="tab"><i class="fas fa-history"></i> Sipariş Geçmişi</button>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-10">
+                <div class="tab-content" id="v-pills-tabContent">
+                    <!-- Dashboard Tab -->
+                    <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-chart-line"></i> Dashboard</h2>
+                            <div>
+                                <select class="form-select d-inline-block w-auto" id="reportPeriod">
+                                    <option value="today">Bugün</option>
+                                    <option value="week">Bu Hafta</option>
+                                    <option value="month">Bu Ay</option>
+                                    <option value="all">Tüm Zamanlar</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- İstatistik Kartları -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card stats-card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2">Toplam Gelir</h6>
+                                                <h3 class="card-title mb-0">₺<span id="totalRevenue">0.00</span></h3>
+                                            </div>
+                                            <i class="fas fa-dollar-sign fa-3x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stats-card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2">Toplam Sipariş</h6>
+                                                <h3 class="card-title mb-0"><span id="totalOrders">0</span></h3>
+                                            </div>
+                                            <i class="fas fa-receipt fa-3x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stats-card bg-info text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2">Ortalama Hesap</h6>
+                                                <h3 class="card-title mb-0">₺<span id="avgOrder">0.00</span></h3>
+                                            </div>
+                                            <i class="fas fa-chart-bar fa-3x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stats-card bg-warning text-white">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="card-subtitle mb-2">Toplam Ürün</h6>
+                                                <h3 class="card-title mb-0"><span id="totalProducts">0</span></h3>
+                                            </div>
+                                            <i class="fas fa-box fa-3x opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Grafikler -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header bg-white">
+                                        <h5><i class="fas fa-chart-area"></i> Satış Grafiği</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="salesChart" height="80"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-white">
+                                        <h5><i class="fas fa-chart-pie"></i> Ödeme Yöntemleri</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="paymentChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- En Çok Satan Ürünler -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header bg-white">
+                                        <h5><i class="fas fa-trophy"></i> En Çok Satan Ürünler</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Ürün Adı</th>
+                                                    <th>Kategori</th>
+                                                    <th>Satış Adedi</th>
+                                                    <th>Toplam Gelir</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="topProductsTable">
+                                                <!-- Top products will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tables Tab -->
+                    <div class="tab-pane fade" id="tables" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-table"></i> Restoran Masaları</h2>
+                            <button class="btn btn-primary" id="addTableBtn"><i class="fas fa-plus-circle"></i> Yeni Masa Ekle</button>
+                        </div>
+                        <div class="row" id="tablesContainer">
+                            <!-- Tables will be loaded here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Products Tab -->
+                    <div class="tab-pane fade" id="products" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-utensils"></i> Menü Ürünleri</h2>
+                            <div>
+                                <button class="btn btn-success me-2" id="addCategoryBtn"><i class="fas fa-tags"></i> Kategori Ekle</button>
+                                <button class="btn btn-primary" id="addProductBtn"><i class="fas fa-plus-circle"></i> Yeni Ürün Ekle</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Arama ve Filtreleme Bölümü -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="productSearchInput" placeholder="Ürün ara...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="categoryFilter">
+                                    <option value="">Tüm Kategoriler</option>
+                                    <!-- Kategoriler buraya yüklenecek -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="productSort">
+                                    <option value="name-asc">İsim (A-Z)</option>
+                                    <option value="name-desc">İsim (Z-A)</option>
+                                    <option value="price-asc">Fiyat (Düşük-Yüksek)</option>
+                                    <option value="price-desc">Fiyat (Yüksek-Düşük)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row" id="productsContainer">
+                            <!-- Products will be loaded here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Orders Tab -->
+                    <div class="tab-pane fade" id="orders" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-receipt"></i> Sipariş Yönetimi</h2>
+                        </div>
+                        <div class="row" id="ordersContainer">
+                            <!-- Tables will be loaded here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Order History Tab -->
+                    <div class="tab-pane fade" id="order-history" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-history"></i> Sipariş Geçmişi</h2>
+                            <button class="btn btn-dark" id="printZReportBtn">
+                                <i class="fas fa-file-pdf"></i> Z Raporu Yazdır
+                            </button>
+                        </div>
+                        <div class="row" id="orderHistoryContainer">
+                            <!-- Order history will be loaded here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- Add Table Modal -->
+    <div class="modal fade" id="addTableModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-table"></i> Yeni Masa Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTableForm">
+                        <div class="mb-3">
+                            <label for="tableName" class="form-label">Masa Adı</label>
+                            <input type="text" class="form-control" id="tableName" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveTableBtn">Save Table</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Category Modal -->
+    <div class="modal fade" id="addCategoryModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-tags"></i> Yeni Kategori Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCategoryForm">
+                        <div class="mb-3">
+                            <label for="categoryName" class="form-label">Kategori Adı</label>
+                            <input type="text" class="form-control" id="categoryName" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" id="saveCategoryBtn">Kategori Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Product Modal -->
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-utensils"></i> Yeni Ürün Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addProductForm">
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">Ürün Adı</label>
+                            <input type="text" class="form-control" id="productName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productPrice" class="form-label">Fiyat</label>
+                            <input type="number" class="form-control" id="productPrice" step="0.01" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productCategory" class="form-label">Kategori</label>
+                            <select class="form-control" id="productCategory">
+                                <option value="">Kategori Seçin</option>
+                                <!-- Kategoriler buraya yüklenecek -->
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="saveProductBtn">Ürün Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Detail Modal -->
+    <div class="modal fade" id="orderDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-receipt"></i> Sipariş Detayları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-info mb-3">
+                        <h6>Masa: <span id="orderTableName"></span></h6>
+                        <h6>Durum: <span id="orderStatus"></span></h6>
+                    </div>
+                    <div class="order-note mb-3" id="orderNoteSection">
+                        <h6>Sipariş Notu:</h6>
+                        <div class="d-flex gap-2">
+                            <textarea class="form-control" id="orderNote" rows="2" placeholder="Sipariş notu ekleyin..."></textarea>
+                            <button class="btn btn-primary" id="saveOrderNoteBtn" style="display: none;">
+                                <i class="fas fa-save"></i> Kaydet
+                            </button>
+                        </div>
+                        <small class="text-muted" id="orderNoteDisplay"></small>
+                    </div>
+                    <div class="order-items">
+                        <h6>Ürünler:</h6>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Adet</th>
+                                    <th>Fiyat</th>
+                                    <th>Toplam</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderItemsTable">
+                                <!-- Order items will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="order-total text-end">
+                        <h5>Toplam: ₺<span id="orderTotal">0.00</span></h5>
+                    </div>
+                    <div class="payment-section mt-3" id="paymentSection" style="display: none;">
+                        <h6>Ödeme Yöntemi:</h6>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="paymentMethod" id="cashPayment" value="cash">
+                            <label class="btn btn-outline-primary" for="cashPayment">Nakit</label>
+                            
+                            <input type="radio" class="btn-check" name="paymentMethod" id="cardPayment" value="card">
+                            <label class="btn btn-outline-primary" for="cardPayment">Kart</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-info" id="printReceiptBtn" style="display: none;">
+                        <i class="fas fa-print"></i> Fiş Yazdır
+                    </button>
+                    <button type="button" class="btn btn-primary" id="printKitchenBtn" style="display: none;">
+                        <i class="fas fa-utensils"></i> Mutfak Adisyonu
+                    </button>
+                    <button type="button" class="btn btn-warning" id="transferOrderBtn" style="display: none;">
+                        <i class="fas fa-exchange-alt"></i> Masa Değiştir
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-success" id="payOrderBtn" style="display: none;">Öde</button>
+                    <button type="button" class="btn btn-danger" id="cancelOrderBtn" style="display: none;">İptal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Main App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
