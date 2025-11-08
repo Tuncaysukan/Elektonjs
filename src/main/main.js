@@ -73,6 +73,10 @@ ipcMain.handle('create-product', async (event, productData) => {
   return await database.createProduct(productData);
 });
 
+ipcMain.handle('update-product', async (event, productId, productData) => {
+  return await database.updateProduct(productId, productData);
+});
+
 ipcMain.handle('delete-product', async (event, productId) => {
   return await database.deleteProduct(productId);
 });
@@ -123,4 +127,16 @@ ipcMain.handle('authenticate-user', async (event, username, password) => {
 
 ipcMain.handle('get-users', async (event) => {
   return await database.getUsers();
+});
+
+ipcMain.handle('update-product-stock', async (event, productId, quantity) => {
+  return await database.updateProductStock(productId, quantity);
+});
+
+ipcMain.handle('decrease-product-stock', async (event, productId, quantity) => {
+  return await database.decreaseProductStock(productId, quantity);
+});
+
+ipcMain.handle('get-low-stock-products', async (event) => {
+  return await database.getLowStockProducts();
 });

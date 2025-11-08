@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   // Product operations
   getProducts: () => ipcRenderer.invoke('get-products'),
   createProduct: (productData) => ipcRenderer.invoke('create-product', productData),
+  updateProduct: (productId, productData) => ipcRenderer.invoke('update-product', productId, productData),
   deleteProduct: (productId) => ipcRenderer.invoke('delete-product', productId),
   
   // Order operations
@@ -28,5 +29,10 @@ contextBridge.exposeInMainWorld('api', {
   
   // User operations
   authenticateUser: (username, password) => ipcRenderer.invoke('authenticate-user', username, password),
-  getUsers: () => ipcRenderer.invoke('get-users')
+  getUsers: () => ipcRenderer.invoke('get-users'),
+  
+  // Stock operations
+  updateProductStock: (productId, quantity) => ipcRenderer.invoke('update-product-stock', productId, quantity),
+  decreaseProductStock: (productId, quantity) => ipcRenderer.invoke('decrease-product-stock', productId, quantity),
+  getLowStockProducts: () => ipcRenderer.invoke('get-low-stock-products')
 });

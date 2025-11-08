@@ -25,6 +25,9 @@ $(document).ready(function() {
     loadCategoryFilter();
     loadOrders();
     
+    // Düşük stok kontrolü
+    setTimeout(() => checkLowStockOnLoad(), 2000);
+    
     // Event listeners for navigation tabs
     $('#tables-tab').on('click', function() {
         loadTables();
@@ -59,6 +62,14 @@ $(document).ready(function() {
     $('#addCategoryBtn').on('click', function() {
         $('#addCategoryModal').modal('show');
     });
+
+    $('#showLowStockBtn').on('click', function() {
+        showLowStockAlert();
+    });
+    
+    $('#bulkStockEntryBtn').on('click', function() {
+        bulkStockEntry();
+    });
     
     // Event listeners for save buttons
     $('#saveTableBtn').on('click', function() {
@@ -67,6 +78,10 @@ $(document).ready(function() {
     
     $('#saveProductBtn').on('click', function() {
         saveProduct();
+    });
+    
+    $('#updateProductBtn').on('click', function() {
+        updateProduct();
     });
     
     $('#saveCategoryBtn').on('click', function() {
@@ -192,6 +207,29 @@ async function saveCategory() {
 // Ürün ekleme modalı açıldığında kategorileri yükle
 $('#addProductModal').on('show.bs.modal', function () {
     loadCategories();
+});
+
+// Ürün düzenleme modalı açıldığında kategorileri yükle
+$('#editProductModal').on('show.bs.modal', function () {
+    loadCategories();
+    
+    // Edit modal için de kategorileri edit select'e yükle
+    const products = window.api.getProducts();
+    products.then(prods => {
+        const productCategories = [...new Set(prods.map(p => p.category).filter(Boolean))];
+        const savedCategories = JSON.parse(localStorage.getItem('categories') || '[]');
+        const allCategories = [...new Set([...productCategories, ...savedCategories])].sort();
+        
+        const categorySelect = $('#editProductCategory');
+        const currentValue = categorySelect.data('current-value');
+        categorySelect.empty();
+        categorySelect.append('<option value="">Kategori Seçin</option>');
+        
+        allCategories.forEach(category => {
+            const selected = category === currentValue ? 'selected' : '';
+            categorySelect.append(`<option value="${category}" ${selected}>${category}</option>`);
+        });
+    });
 });
 
 // Kategori ekleme modalı açıldığında formu temizle
@@ -711,6 +749,12 @@ function filterAndSortProducts() {
                 return;
             }
             
+            const stock = product.stock !== undefined ? parseInt(product.stock) : 0;
+            const lowStockThreshold = product.lowStockThreshold !== undefined ? parseInt(product.lowStockThreshold) : 10;
+            const isLowStock = stock <= lowStockThreshold && stock > 0;
+            const stockClass = stock === 0 ? 'text-danger' : isLowStock ? 'text-warning' : 'text-success';
+            const stockIcon = stock === 0 ? 'fa-times-circle' : isLowStock ? 'fa-exclamation-triangle' : 'fa-check-circle';
+            
             const productCard = `
                 <div class="col-md-4">
                     <div class="card product-card">
@@ -718,8 +762,17 @@ function filterAndSortProducts() {
                             <div class="product-name">${product.name}</div>
                             <div class="product-price">₺${parseFloat(product.price).toFixed(2)}</div>
                             <div class="product-category">${product.category || 'Kategori Yok'}</div>
+                            <div class="product-stock ${stockClass} mb-2">
+                                <i class="fas ${stockIcon}"></i> Stok: ${stock} adet
+                            </div>
                             <div class="product-actions">
-                                <button class="btn btn-danger btn-action" data-action="deleteProduct" data-product-id="${productId}" id="delete-product-${productId}">
+                                <button class="btn btn-primary btn-action btn-sm me-1" data-action="editProduct" data-product-id="${productId}" id="edit-product-${productId}">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
+                                <button class="btn btn-info btn-action btn-sm me-1" data-action="updateStock" data-product-id="${productId}" id="update-stock-${productId}">
+                                    <i class="fas fa-boxes"></i> Stok
+                                </button>
+                                <button class="btn btn-danger btn-action btn-sm" data-action="deleteProduct" data-product-id="${productId}" id="delete-product-${productId}">
                                     <i class="fas fa-trash"></i> Sil
                                 </button>
                             </div>
@@ -731,6 +784,28 @@ function filterAndSortProducts() {
             container.append($productCard);
             
             // Add event listeners to buttons
+            $productCard.find('[data-action="editProduct"]').on('click', function() {
+                const productIdFromData = $(this).data('product-id');
+                const id = productIdFromData || $(this).attr('id').replace('edit-product-', '');
+                
+                if (id && id !== 'undefined' && !isNaN(id)) {
+                    editProduct(id, product);
+                } else {
+                    console.error('Geçersiz ürün ID:', id);
+                }
+            });
+            
+            $productCard.find('[data-action="updateStock"]').on('click', function() {
+                const productIdFromData = $(this).data('product-id');
+                const id = productIdFromData || $(this).attr('id').replace('update-stock-', '');
+                
+                if (id && id !== 'undefined' && !isNaN(id)) {
+                    updateProductStock(id, product.name, product.stock);
+                } else {
+                    console.error('Geçersiz ürün ID:', id);
+                }
+            });
+            
             $productCard.find('[data-action="deleteProduct"]').on('click', function() {
                 const productIdFromData = $(this).data('product-id');
                 const buttonId = $(this).attr('id');
@@ -979,13 +1054,21 @@ async function loadOrderHistory() {
             const paymentMethodText = order.paymentMethod === 'cash' ? 'Nakit' : order.paymentMethod === 'card' ? 'Kart' : '-';
             
             const orderCard = `
-                <div class="col-md-4">
+                <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card order-card">
                         <div class="card-body">
-                            <div class="order-table"><i class="fas fa-table"></i> Masa: ${order.Table ? order.Table.name : 'Bilinmiyor'}</div>
-                            <div class="order-status ${statusClass}"><i class="fas fa-circle"></i> ${statusText}</div>
-                            <div class="order-total">Toplam: ₺${orderTotal}</div>
-                            <div class="order-payment">Ödeme: ${paymentMethodText}</div>
+                            <div class="order-table">
+                                <i class="fas fa-table"></i> 
+                                <span>${order.Table ? order.Table.name : 'Bilinmiyor'}</span>
+                            </div>
+                            <div class="order-info">
+                                <div class="order-status ${statusClass}">${statusText}</div>
+                                <div class="order-total">₺${orderTotal}</div>
+                                <div class="order-payment">
+                                    <i class="fas ${order.paymentMethod === 'cash' ? 'fa-money-bill-wave' : order.paymentMethod === 'card' ? 'fa-credit-card' : 'fa-minus'}"></i>
+                                    ${paymentMethodText}
+                                </div>
+                            </div>
                             <div class="order-actions">
                                 <button class="btn btn-info btn-action" data-action="viewOrder" data-order-id="${orderId}" id="view-order-history-${orderId}">
                                     <i class="fas fa-eye"></i> Detaylar
@@ -1068,6 +1151,8 @@ async function saveProduct() {
     const productName = $('#productName').val().trim();
     const productPrice = $('#productPrice').val();
     const productCategory = $('#productCategory').val();
+    const productStock = $('#productStock').val();
+    const productLowStockThreshold = $('#productLowStockThreshold').val();
     
     if (!productName || !productPrice) {
         await Swal.fire({
@@ -1082,7 +1167,9 @@ async function saveProduct() {
     const productData = {
         name: productName,
         price: parseFloat(productPrice),
-        category: productCategory || null
+        category: productCategory || null,
+        stock: productStock ? parseInt(productStock) : 0,
+        lowStockThreshold: productLowStockThreshold ? parseInt(productLowStockThreshold) : 10
     };
     
     try {
@@ -1700,6 +1787,20 @@ async function addProductToOrder(orderId, productId, productName, price, quantit
     }
     
     try {
+        // Stok kontrolü
+        const products = await window.api.getProducts();
+        const product = products.find(p => p.id === parseInt(productId));
+        
+        if (product && product.stock < quantity) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Yetersiz Stok',
+                text: `${productName} ürününün stoğu yetersiz! Mevcut: ${product.stock}, İstenen: ${quantity}`,
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
         // Sipariş öğesi oluştur
         const orderItemData = {
             orderId: parseInt(orderId),
@@ -1709,6 +1810,23 @@ async function addProductToOrder(orderId, productId, productName, price, quantit
         };
         
         await window.api.addOrderItem(orderItemData);
+        
+        // Stoktan düş
+        if (product && product.stock > 0) {
+            const stockResult = await window.api.decreaseProductStock(parseInt(productId), parseInt(quantity));
+            
+            // Düşük stok uyarısı
+            if (stockResult.lowStock) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: `${productName} stoğu düşük!`,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
+        }
         
         // Masa durumunu güncelle
         const orders = await window.api.getOrders();
@@ -1727,6 +1845,7 @@ async function addProductToOrder(orderId, productId, productName, price, quantit
         loadTables();
         loadOrders();
         loadDashboard();
+        loadProducts(); // Stok güncellemesi için
     } catch (error) {
         console.error('Error adding product to order:', error);
         await Swal.fire({
@@ -2587,6 +2706,319 @@ async function printZReport() {
             icon: 'error',
             title: 'Hata',
             text: 'Z raporu yazdırılırken hata oluştu. Lütfen tekrar deneyin.',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Update product stock
+async function updateProductStock(productId, productName, currentStock) {
+    if (!productId || isNaN(productId)) {
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Geçersiz ürün ID',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    const { value: newStock } = await Swal.fire({
+        title: 'Stok Güncelle',
+        html: `
+            <p><strong>${productName}</strong></p>
+            <p class="mb-3">Mevcut Stok: <strong>${currentStock}</strong> adet</p>
+            <label for="stockInput" class="form-label">Yeni Stok Miktarı:</label>
+        `,
+        input: 'number',
+        inputValue: currentStock,
+        inputAttributes: {
+            min: 0,
+            step: 1
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Güncelle',
+        cancelButtonText: 'İptal',
+        inputValidator: (value) => {
+            if (value === '' || value < 0) {
+                return 'Lütfen geçerli bir stok miktarı girin';
+            }
+        }
+    });
+    
+    if (newStock === undefined) {
+        return;
+    }
+    
+    try {
+        await window.api.updateProductStock(parseInt(productId), parseInt(newStock));
+        
+        loadProducts();
+        loadDashboard();
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Stok başarıyla güncellendi',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } catch (error) {
+        console.error('Error updating stock:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: error.message || 'Stok güncellenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Show low stock alert
+async function showLowStockAlert() {
+    try {
+        const lowStockProducts = await window.api.getLowStockProducts();
+        
+        if (lowStockProducts.length === 0) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Harika!',
+                text: 'Tüm ürünlerin stoku yeterli seviyede',
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        let productsHtml = '<div class="list-group text-start">';
+        lowStockProducts.forEach(product => {
+            const stockClass = product.stock === 0 ? 'danger' : 'warning';
+            productsHtml += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${product.name}</strong>
+                        <small class="d-block text-muted">${product.category || 'Kategori Yok'}</small>
+                    </div>
+                    <span class="badge bg-${stockClass} rounded-pill">
+                        ${product.stock} / ${product.lowStockThreshold}
+                    </span>
+                </div>
+            `;
+        });
+        productsHtml += '</div>';
+        
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Düşük Stok Uyarısı',
+            html: `
+                <p class="mb-3">${lowStockProducts.length} ürünün stoğu düşük:</p>
+                ${productsHtml}
+            `,
+            width: '600px',
+            confirmButtonText: 'Tamam'
+        });
+        
+    } catch (error) {
+        console.error('Error loading low stock products:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Stok bilgileri yüklenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Check and show low stock notification on load
+async function checkLowStockOnLoad() {
+    try {
+        const lowStockProducts = await window.api.getLowStockProducts();
+        
+        if (lowStockProducts.length > 0) {
+            // Toast bildirimi göster
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: `${lowStockProducts.length} ürünün stoğu düşük!`,
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true
+            });
+        }
+    } catch (error) {
+        console.error('Error checking low stock:', error);
+    }
+}
+
+// Edit product
+async function editProduct(productId, product) {
+    if (!productId || isNaN(productId)) {
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Geçersiz ürün ID',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    // Form alanlarını doldur
+    $('#editProductId').val(productId);
+    $('#editProductName').val(product.name);
+    $('#editProductPrice').val(product.price);
+    $('#editProductCategory').data('current-value', product.category);
+    $('#editProductCategory').val(product.category);
+    $('#editProductLowStockThreshold').val(product.lowStockThreshold || 10);
+    
+    // Modal'ı aç
+    $('#editProductModal').modal('show');
+}
+
+// Update product
+async function updateProduct() {
+    const productId = $('#editProductId').val();
+    const productName = $('#editProductName').val().trim();
+    const productPrice = $('#editProductPrice').val();
+    const productCategory = $('#editProductCategory').val();
+    const productLowStockThreshold = $('#editProductLowStockThreshold').val();
+    
+    if (!productName || !productPrice) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Uyarı',
+            text: 'Lütfen ürün adı ve fiyatını girin',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    const productData = {
+        name: productName,
+        price: parseFloat(productPrice),
+        category: productCategory || null,
+        lowStockThreshold: productLowStockThreshold ? parseInt(productLowStockThreshold) : 10
+    };
+    
+    try {
+        await window.api.updateProduct(parseInt(productId), productData);
+        $('#editProductModal').modal('hide');
+        $('#editProductForm')[0].reset();
+        loadProducts();
+        loadCategories();
+        loadCategoryFilter();
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Ürün başarıyla güncellendi',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } catch (error) {
+        console.error('Error updating product:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Ürün güncellenirken hata oluştu. Lütfen tekrar deneyin.',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Bulk stock entry
+async function bulkStockEntry() {
+    try {
+        const products = await window.api.getProducts();
+        
+        if (products.length === 0) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'Bilgi',
+                text: 'Henüz ürün eklenmemiş',
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        // Ürün listesi HTML'i oluştur
+        let productsHtml = '<div class="stock-entry-list">';
+        products.forEach(product => {
+            const stock = parseInt(product.stock) || 0;
+            productsHtml += `
+                <div class="stock-entry-item mb-3 p-3 border rounded">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>${product.name}</strong>
+                            <small class="d-block text-muted">${product.category || 'Kategori Yok'}</small>
+                        </div>
+                        <span class="badge bg-primary">Mevcut: ${stock}</span>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text">Yeni Stok</span>
+                        <input type="number" class="form-control stock-input" 
+                               data-product-id="${product.id}" 
+                               value="${stock}" 
+                               min="0"
+                               placeholder="Stok miktarı">
+                    </div>
+                </div>
+            `;
+        });
+        productsHtml += '</div>';
+        
+        const result = await Swal.fire({
+            title: 'Toplu Stok Girişi',
+            html: productsHtml,
+            width: '700px',
+            showCancelButton: true,
+            confirmButtonText: 'Tümünü Kaydet',
+            cancelButtonText: 'İptal',
+            customClass: {
+                container: 'stock-entry-modal'
+            },
+            preConfirm: () => {
+                const stockUpdates = [];
+                document.querySelectorAll('.stock-input').forEach(input => {
+                    const productId = input.getAttribute('data-product-id');
+                    const newStock = parseInt(input.value) || 0;
+                    stockUpdates.push({ productId, newStock });
+                });
+                return stockUpdates;
+            }
+        });
+        
+        if (!result.isConfirmed || !result.value) {
+            return;
+        }
+        
+        // Tüm stok güncellemelerini yap
+        let successCount = 0;
+        for (const update of result.value) {
+            try {
+                await window.api.updateProductStock(parseInt(update.productId), update.newStock);
+                successCount++;
+            } catch (error) {
+                console.error('Error updating stock:', error);
+            }
+        }
+        
+        loadProducts();
+        loadDashboard();
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: `${successCount} ürünün stoğu güncellendi`,
+            timer: 2000,
+            showConfirmButton: false
+        });
+        
+    } catch (error) {
+        console.error('Error in bulk stock entry:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Stok girişi yapılırken hata oluştu',
             confirmButtonText: 'Tamam'
         });
     }

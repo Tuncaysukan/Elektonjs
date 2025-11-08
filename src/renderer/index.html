@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Modern POS Sistemi</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,12 +19,12 @@
 <body>
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12 header">
-                <div class="d-flex justify-content-between align-items-center">
+            <div class="col-12 header">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <h1><i class="fas fa-cash-register"></i> Modern POS Sistemi</h1>
                     <div class="user-info">
-                        <span class="me-3"><i class="fas fa-user-circle"></i> <span id="currentUserName">Kullanıcı</span></span>
-                        <button class="btn btn-light btn-sm" id="logoutBtn">
+                        <span class="me-3"><i class="fas fa-user-circle fa-lg"></i> <span id="currentUserName">Kullanıcı</span></span>
+                        <button class="btn btn-outline-primary" id="logoutBtn">
                             <i class="fas fa-sign-out-alt"></i> Çıkış
                         </button>
                     </div>
@@ -30,7 +32,7 @@
             </div>
         </div>
         
-        <div class="row">
+        <div class="row g-0">
             <!-- Sidebar Navigation -->
             <div class="col-md-2 sidebar">
                 <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
@@ -180,10 +182,12 @@
                     
                     <!-- Products Tab -->
                     <div class="tab-pane fade" id="products" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                             <h2><i class="fas fa-utensils"></i> Menü Ürünleri</h2>
-                            <div>
-                                <button class="btn btn-success me-2" id="addCategoryBtn"><i class="fas fa-tags"></i> Kategori Ekle</button>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-info" id="bulkStockEntryBtn"><i class="fas fa-warehouse"></i> Stok Girişi</button>
+                                <button class="btn btn-warning" id="showLowStockBtn"><i class="fas fa-exclamation-triangle"></i> Düşük Stok</button>
+                                <button class="btn btn-success" id="addCategoryBtn"><i class="fas fa-tags"></i> Kategori Ekle</button>
                                 <button class="btn btn-primary" id="addProductBtn"><i class="fas fa-plus-circle"></i> Yeni Ürün Ekle</button>
                             </div>
                         </div>
@@ -318,11 +322,59 @@
                                 <!-- Kategoriler buraya yüklenecek -->
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label for="productStock" class="form-label">Başlangıç Stok</label>
+                            <input type="number" class="form-control" id="productStock" value="0" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="productLowStockThreshold" class="form-label">Minimum Stok Uyarısı</label>
+                            <input type="number" class="form-control" id="productLowStockThreshold" value="10" min="0">
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary" id="saveProductBtn">Ürün Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Product Modal -->
+    <div class="modal fade" id="editProductModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Ürün Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProductForm">
+                        <input type="hidden" id="editProductId">
+                        <div class="mb-3">
+                            <label for="editProductName" class="form-label">Ürün Adı</label>
+                            <input type="text" class="form-control" id="editProductName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductPrice" class="form-label">Fiyat</label>
+                            <input type="number" class="form-control" id="editProductPrice" step="0.01" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductCategory" class="form-label">Kategori</label>
+                            <select class="form-control" id="editProductCategory">
+                                <option value="">Kategori Seçin</option>
+                                <!-- Kategoriler buraya yüklenecek -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editProductLowStockThreshold" class="form-label">Minimum Stok Uyarısı</label>
+                            <input type="number" class="form-control" id="editProductLowStockThreshold" min="0">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" id="updateProductBtn">Güncelle</button>
                 </div>
             </div>
         </div>

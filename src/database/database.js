@@ -67,6 +67,17 @@ class Database {
       category: {
         type: DataTypes.STRING,
         allowNull: true
+      },
+      stock: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+      },
+      lowStockThreshold: {
+        type: DataTypes.INTEGER,
+        defaultValue: 10,
+        allowNull: false,
+        field: 'low_stock_threshold'
       }
     }, {
       tableName: 'products',
@@ -226,18 +237,143 @@ class Database {
   // Product operations
   async getProducts() {
     const products = await this.Product.findAll({ raw: true });
-    return products;
+    return products.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      category: p.category,
+      stock: p.stock,
+      lowStockThreshold: p.low_stock_threshold || p.lowStockThreshold,
+      createdAt: p.created_at || p.createdAt,
+      updatedAt: p.updated_at || p.updatedAt
+    }));
   }
   
   async createProduct(productData) {
-    const product = await this.Product.create(productData);
+    // productData'nın geçerli olup olmadığını kontrol et
+    if (!productData || !productData.name || !productData.price) {
+      throw new Error('Geçersiz ürün verisi');
+    }
+    
+    const validatedData = {
+      name: productData.name,
+      price: parseFloat(productData.price),
+      category: productData.category || null,
+      stock: productData.stock !== undefined ? parseInt(productData.stock) : 0,
+      lowStockThreshold: productData.lowStockThreshold !== undefined ? parseInt(productData.lowStockThreshold) : 10
+    };
+    
+    const product = await this.Product.create(validatedData);
     return {
       id: product.id,
       name: product.name,
       price: product.price,
       category: product.category,
+      stock: product.stock,
+      lowStockThreshold: product.lowStockThreshold,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
+    };
+  }
+  
+  async updateProductStock(productId, quantity) {
+    // Parametreleri kontrol et
+    if (!productId || isNaN(productId)) {
+      throw new Error('Geçersiz ürün ID');
+    }
+    
+    const product = await this.Product.findByPk(parseInt(productId));
+    if (!product) {
+      throw new Error('Ürün bulunamadı');
+    }
+    
+    const newStock = parseInt(quantity);
+    
+    if (newStock < 0) {
+      throw new Error('Stok miktarı negatif olamaz');
+    }
+    
+    await this.Product.update(
+      { stock: newStock },
+      { where: { id: parseInt(productId) } }
+    );
+    
+    return { id: productId, stock: newStock };
+  }
+  
+  async decreaseProductStock(productId, quantity) {
+    // Parametreleri kontrol et
+    if (!productId || isNaN(productId) || !quantity || isNaN(quantity)) {
+      throw new Error('Geçersiz parametreler');
+    }
+    
+    const product = await this.Product.findByPk(parseInt(productId));
+    if (!product) {
+      throw new Error('Ürün bulunamadı');
+    }
+    
+    const newStock = product.stock - parseInt(quantity);
+    
+    if (newStock < 0) {
+      throw new Error(`Yetersiz stok! Mevcut: ${product.stock}, İstenen: ${quantity}`);
+    }
+    
+    await this.Product.update(
+      { stock: newStock },
+      { where: { id: parseInt(productId) } }
+    );
+    
+    return { id: productId, stock: newStock, lowStock: newStock <= product.lowStockThreshold };
+  }
+  
+  async getLowStockProducts() {
+    const products = await this.Product.findAll({
+      where: {
+        stock: {
+          [this.sequelize.Sequelize.Op.lte]: this.sequelize.literal('low_stock_threshold')
+        }
+      },
+      raw: true
+    });
+    
+    return products.map(p => ({
+      id: p.id,
+      name: p.name,
+      stock: p.stock,
+      lowStockThreshold: p.low_stock_threshold || p.lowStockThreshold,
+      category: p.category
+    }));
+  }
+  
+  async updateProduct(productId, productData) {
+    if (!productId || isNaN(productId)) {
+      throw new Error('Geçersiz ürün ID');
+    }
+    
+    if (!productData || !productData.name || !productData.price) {
+      throw new Error('Geçersiz ürün verisi');
+    }
+    
+    const updateData = {
+      name: productData.name,
+      price: parseFloat(productData.price),
+      category: productData.category || null
+    };
+    
+    if (productData.lowStockThreshold !== undefined) {
+      updateData.lowStockThreshold = parseInt(productData.lowStockThreshold);
+    }
+    
+    await this.Product.update(updateData, { where: { id: parseInt(productId) } });
+    
+    const updated = await this.Product.findByPk(parseInt(productId), { raw: true });
+    return {
+      id: updated.id,
+      name: updated.name,
+      price: updated.price,
+      category: updated.category,
+      stock: updated.stock,
+      lowStockThreshold: updated.low_stock_threshold || updated.lowStockThreshold
     };
   }
   
