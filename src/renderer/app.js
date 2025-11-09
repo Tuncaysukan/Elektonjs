@@ -50,8 +50,18 @@ $(document).ready(function() {
         loadOnlineOrders();
     });
     
+    $('#couriers-tab').on('click', function() {
+        loadCouriers();
+        loadActiveDeliveries();
+    });
+    
     $('#dashboard-tab').on('click', function() {
         loadDashboard();
+    });
+    
+    // Event listeners for add buttons
+    $('#addCourierBtn').on('click', function() {
+        $('#addCourierModal').modal('show');
     });
     
     // Event listeners for add buttons
@@ -112,6 +122,22 @@ $(document).ready(function() {
         saveCategory();
     });
     
+    $('#saveCourierBtn').on('click', function() {
+        saveCourier();
+    });
+    
+    $('#updateCourierBtn').on('click', function() {
+        updateCourier();
+    });
+    
+    $('#assignCourierBtn').on('click', function() {
+        assignCourierToOrder();
+    });
+    
+    $('#updateStatusBtn').on('click', function() {
+        updateDeliveryStatus();
+    });
+    
     // Event listeners for payment
     $('#payOrderBtn').on('click', function() {
         payOrder();
@@ -125,6 +151,13 @@ $(document).ready(function() {
     // Event listeners for transfer order
     $('#transferOrderBtn').on('click', function() {
         transferOrder();
+    });
+    
+    // Event listener for assign courier
+    $('#assignCourierOrderBtn').on('click', function() {
+        if (currentOrderId) {
+            openAssignCourierModal(currentOrderId);
+        }
     });
     
     // Event listeners for print
@@ -314,6 +347,9 @@ async function loadDashboard() {
         $('#avgOrder').text(avgOrder.toFixed(2));
         $('#totalProducts').text(products.length);
         
+        // Kurye istatistiklerini yükle
+        await loadCourierStats(filteredOrders);
+        
         // En çok satan ürünleri hesapla
         await loadTopProducts(paidOrders);
         
@@ -323,6 +359,33 @@ async function loadDashboard() {
         
     } catch (error) {
         console.error('Error loading dashboard:', error);
+    }
+}
+
+// Kurye istatistiklerini yükle
+async function loadCourierStats(filteredOrders) {
+    try {
+        // Aktif teslimatları al
+        const activeDeliveries = await window.api.getActiveDeliveries();
+        $('#activeDeliveriesCount').text(activeDeliveries.length);
+        
+        // Teslim edilen siparişleri say (periyoda göre)
+        const deliveredOrders = filteredOrders.filter(order => 
+            order.deliveryStatus === 'delivered'
+        );
+        $('#deliveredCount').text(deliveredOrders.length);
+        
+        // Müsait kuryeleri al
+        const couriers = await window.api.getCouriers();
+        const availableCouriers = couriers.filter(c => c.status === 'available');
+        $('#availableCouriersCount').text(availableCouriers.length);
+        
+    } catch (error) {
+        console.error('Error loading courier stats:', error);
+        // Hata durumunda 0 göster
+        $('#activeDeliveriesCount').text('0');
+        $('#deliveredCount').text('0');
+        $('#availableCouriersCount').text('0');
     }
 }
 
@@ -698,13 +761,13 @@ async function loadCategoryFilter() {
 
 // Filter and sort products
 function filterAndSortProducts() {
-    const container = $('#productsContainer');
-    container.empty();
-    
+        const container = $('#productsContainer');
+        container.empty();
+        
     if (allProducts.length === 0) {
-        container.append('<div class="col-12"><p>Hiç ürün bulunamadı. Başlamak için yeni bir ürün ekleyin.</p></div>');
-        return;
-    }
+            container.append('<div class="col-12"><p>Hiç ürün bulunamadı. Başlamak için yeni bir ürün ekleyin.</p></div>');
+            return;
+        }
     
     // Arama değerini al
     const searchTerm = $('#productSearchInput').val().toLowerCase().trim();
@@ -747,24 +810,24 @@ function filterAndSortProducts() {
     
     if (filteredProducts.length === 0) {
         container.append('<div class="col-12"><p>Arama kriterlerine uygun ürün bulunamadı.</p></div>');
-        return;
-    }
-    
-    // Ürünleri kategorilere göre grupla
-    const categories = {};
-    filteredProducts.forEach(product => {
-        const category = product.category || 'Diğer';
-        if (!categories[category]) {
-            categories[category] = [];
+            return;
         }
-        categories[category].push(product);
-    });
-    
-    // Kategorilere göre ürünleri göster
-    for (const [category, categoryProducts] of Object.entries(categories)) {
-        container.append(`<div class="col-12 mt-4"><h3>${category}</h3></div>`);
         
-        categoryProducts.forEach(product => {
+        // Ürünleri kategorilere göre grupla
+        const categories = {};
+    filteredProducts.forEach(product => {
+            const category = product.category || 'Diğer';
+            if (!categories[category]) {
+                categories[category] = [];
+            }
+            categories[category].push(product);
+        });
+        
+        // Kategorilere göre ürünleri göster
+        for (const [category, categoryProducts] of Object.entries(categories)) {
+            container.append(`<div class="col-12 mt-4"><h3>${category}</h3></div>`);
+            
+            categoryProducts.forEach(product => {
             // ID kontrolü
             const productId = product.id !== undefined ? product.id : (product.dataValues ? product.dataValues.id : null);
             
@@ -779,17 +842,17 @@ function filterAndSortProducts() {
             const stockClass = stock === 0 ? 'text-danger' : isLowStock ? 'text-warning' : 'text-success';
             const stockIcon = stock === 0 ? 'fa-times-circle' : isLowStock ? 'fa-exclamation-triangle' : 'fa-check-circle';
             
-            const productCard = `
-                <div class="col-md-4">
-                    <div class="card product-card">
-                        <div class="card-body">
-                            <div class="product-name">${product.name}</div>
-                            <div class="product-price">₺${parseFloat(product.price).toFixed(2)}</div>
-                            <div class="product-category">${product.category || 'Kategori Yok'}</div>
+                const productCard = `
+                    <div class="col-md-4">
+                        <div class="card product-card">
+                            <div class="card-body">
+                                <div class="product-name">${product.name}</div>
+                                <div class="product-price">₺${parseFloat(product.price).toFixed(2)}</div>
+                                <div class="product-category">${product.category || 'Kategori Yok'}</div>
                             <div class="product-stock ${stockClass} mb-2">
                                 <i class="fas ${stockIcon}"></i> Stok: ${stock} adet
                             </div>
-                            <div class="product-actions">
+                                <div class="product-actions">
                                 <button class="btn btn-primary btn-action btn-sm me-1" data-action="editProduct" data-product-id="${productId}" id="edit-product-${productId}">
                                     <i class="fas fa-edit"></i> Düzenle
                                 </button>
@@ -797,17 +860,17 @@ function filterAndSortProducts() {
                                     <i class="fas fa-boxes"></i> Stok
                                 </button>
                                 <button class="btn btn-danger btn-action btn-sm" data-action="deleteProduct" data-product-id="${productId}" id="delete-product-${productId}">
-                                    <i class="fas fa-trash"></i> Sil
-                                </button>
+                                        <i class="fas fa-trash"></i> Sil
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-            const $productCard = $(productCard);
-            container.append($productCard);
-            
-            // Add event listeners to buttons
+                `;
+                const $productCard = $(productCard);
+                container.append($productCard);
+                
+                // Add event listeners to buttons
             $productCard.find('[data-action="editProduct"]').on('click', function() {
                 const productIdFromData = $(this).data('product-id');
                 const id = productIdFromData || $(this).attr('id').replace('edit-product-', '');
@@ -830,25 +893,25 @@ function filterAndSortProducts() {
                 }
             });
             
-            $productCard.find('[data-action="deleteProduct"]').on('click', function() {
+                $productCard.find('[data-action="deleteProduct"]').on('click', function() {
                 const productIdFromData = $(this).data('product-id');
-                const buttonId = $(this).attr('id');
-                
+                    const buttonId = $(this).attr('id');
+                    
                 const id = productIdFromData || buttonId.replace('delete-product-', '');
-                
-                if (id && id !== 'undefined' && !isNaN(id)) {
-                    deleteProduct(id);
-                } else {
-                    console.error('Geçersiz ürün ID:', id);
+                    
+                    if (id && id !== 'undefined' && !isNaN(id)) {
+                        deleteProduct(id);
+                    } else {
+                        console.error('Geçersiz ürün ID:', id);
                     Swal.fire({
                         icon: 'error',
                         title: 'Hata',
                         text: 'Geçersiz ürün ID',
                         confirmButtonText: 'Tamam'
                     });
-                }
+                    }
+                });
             });
-        });
     }
 }
 
@@ -934,7 +997,7 @@ async function loadOrders() {
             const tableCard = `
                 <div class="col-md-4 mb-4">
                     <div class="card table-card h-100">
-                        <div class="card-body">
+                            <div class="card-body">
                             <div class="table-name mb-2"><i class="fas fa-table"></i> ${table.name}</div>
                             <div class="table-status ${statusClass} mb-3"><i class="fas fa-circle"></i> ${statusText}</div>
                             ${orderItemsHtml}
@@ -954,15 +1017,15 @@ async function loadOrders() {
                                         <i class="fas fa-cart-plus"></i> Sipariş Ver
                                     </button>
                                 `}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
             const $tableCard = $(tableCard);
             container.append($tableCard);
-            
-            // Add event listeners to buttons
+                
+                // Add event listeners to buttons
             if (isOccupied && orderId) {
                 // Detaylar butonu
                 $tableCard.find('[data-action="viewOrder"]').on('click', function() {
@@ -1455,13 +1518,15 @@ async function viewOrder(orderId) {
         $('#payOrderBtn').hide();
         $('#cancelOrderBtn').hide();
         
-        // Transfer butonu sadece açık siparişlerde görünsün
+        // Transfer ve kurye atama butonları sadece açık siparişlerde görünsün
         if (isOpenOrder) {
             $('#transferOrderBtn').show();
+            $('#assignCourierOrderBtn').show();
             $('#printKitchenBtn').show(); // Mutfak adisyonu açık siparişlerde
             $('#printReceiptBtn').hide();
         } else {
             $('#transferOrderBtn').hide();
+            $('#assignCourierOrderBtn').hide();
             $('#printKitchenBtn').hide();
             // Ödenmiş siparişlerde fiş yazdır göster
             if (order && order.status === 'paid') {
@@ -1508,6 +1573,7 @@ async function openPayment(orderId) {
     $('#payOrderBtn').show();
     $('#cancelOrderBtn').show();
     $('#transferOrderBtn').hide(); // Ödeme modunda transfer gizli
+    $('#assignCourierOrderBtn').hide(); // Ödeme modunda kurye atama gizli
     $('#printReceiptBtn').hide();
     $('#printKitchenBtn').hide();
 }
@@ -3411,6 +3477,626 @@ async function fetchAllPlatformOrders() {
             icon: 'error',
             title: 'Hata',
             text: error.message || 'Siparişler çekilirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// ==================== KURYE FONKSİYONLARI ====================
+
+// Load couriers
+async function loadCouriers() {
+    try {
+        const couriers = await window.api.getCouriers();
+        const activeDeliveries = await window.api.getActiveDeliveries();
+        const container = $('#couriersContainer');
+        container.empty();
+        
+        if (couriers.length === 0) {
+            container.html(`
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fas fa-motorcycle fa-3x mb-3"></i>
+                    <p>Henüz kurye eklenmemiş</p>
+                </div>
+            `);
+            return;
+        }
+        
+        couriers.forEach(courier => {
+            const statusBadge = getStatusBadge(courier.status);
+            const statusIcon = getStatusIcon(courier.status);
+            
+            // Kuryenin aktif teslimatını bul
+            const activeDelivery = activeDeliveries.find(d => d.courierId === courier.id);
+            
+            const card = `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100 ${activeDelivery ? 'border-warning' : ''}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0">
+                                    ${statusIcon} ${courier.name}
+                                </h5>
+                                ${statusBadge}
+                            </div>
+                            
+                            <div class="mb-2">
+                                <i class="fas fa-phone text-primary"></i>
+                                <span class="ms-2">${courier.phone}</span>
+                            </div>
+                            
+                            ${courier.vehiclePlate ? `
+                                <div class="mb-2">
+                                    <i class="fas fa-car text-success"></i>
+                                    <span class="ms-2">${courier.vehiclePlate}</span>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="mb-3">
+                                <i class="fas fa-box text-info"></i>
+                                <span class="ms-2">${courier.totalDeliveries || 0} Teslimat</span>
+                            </div>
+                            
+                            ${activeDelivery ? `
+                                <div class="alert alert-warning p-2 mb-3">
+                                    <strong><i class="fas fa-shipping-fast"></i> Aktif Teslimat:</strong><br>
+                                    <small>Sipariş #${activeDelivery.id}</small><br>
+                                    <small>${getDeliveryStatusBadge(activeDelivery.deliveryStatus)}</small>
+                                    ${activeDelivery.deliveryAddress ? `<br><small><i class="fas fa-map-marker-alt"></i> ${activeDelivery.deliveryAddress.substring(0, 30)}...</small>` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-info" onclick="viewCourierDetail(${courier.id})">
+                                    <i class="fas fa-eye"></i> Detay
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="editCourier(${courier.id})">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteCourier(${courier.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.append(card);
+        });
+        
+    } catch (error) {
+        console.error('Error loading couriers:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kuryeler yüklenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Get status badge
+function getStatusBadge(status) {
+    const badges = {
+        'available': '<span class="badge bg-success">Müsait</span>',
+        'on_delivery': '<span class="badge bg-warning">Teslimat Yapıyor</span>',
+        'off_duty': '<span class="badge bg-secondary">İzinde</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">Bilinmiyor</span>';
+}
+
+// Get status icon
+function getStatusIcon(status) {
+    const icons = {
+        'available': '<i class="fas fa-check-circle text-success"></i>',
+        'on_delivery': '<i class="fas fa-shipping-fast text-warning"></i>',
+        'off_duty': '<i class="fas fa-moon text-secondary"></i>'
+    };
+    return icons[status] || '<i class="fas fa-user"></i>';
+}
+
+// Save new courier
+async function saveCourier() {
+    const name = $('#courierName').val().trim();
+    const phone = $('#courierPhone').val().trim();
+    const vehiclePlate = $('#courierVehiclePlate').val().trim();
+    
+    if (!name || !phone) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Uyarı',
+            text: 'Lütfen ad ve telefon alanlarını doldurun',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    try {
+        await window.api.createCourier({
+            name,
+            phone,
+            vehiclePlate: vehiclePlate || null,
+            status: 'available'
+        });
+        
+        $('#addCourierModal').modal('hide');
+        $('#courierForm')[0].reset();
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Kurye başarıyla eklendi',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        
+        loadCouriers();
+        
+    } catch (error) {
+        console.error('Error saving courier:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kurye eklenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Edit courier
+async function editCourier(courierId) {
+    try {
+        const courier = await window.api.getCourierById(courierId);
+        
+        if (!courier) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: 'Kurye bulunamadı',
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        $('#editCourierId').val(courier.id);
+        $('#editCourierName').val(courier.name);
+        $('#editCourierPhone').val(courier.phone);
+        $('#editCourierVehiclePlate').val(courier.vehiclePlate || '');
+        $('#editCourierStatus').val(courier.status);
+        
+        $('#editCourierModal').modal('show');
+        
+    } catch (error) {
+        console.error('Error loading courier:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kurye bilgileri yüklenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Update courier
+async function updateCourier() {
+    const courierId = $('#editCourierId').val();
+    const name = $('#editCourierName').val().trim();
+    const phone = $('#editCourierPhone').val().trim();
+    const vehiclePlate = $('#editCourierVehiclePlate').val().trim();
+    const status = $('#editCourierStatus').val();
+    
+    if (!name || !phone) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Uyarı',
+            text: 'Lütfen ad ve telefon alanlarını doldurun',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    try {
+        await window.api.updateCourier(courierId, {
+            name,
+            phone,
+            vehiclePlate: vehiclePlate || null,
+            status
+        });
+        
+        $('#editCourierModal').modal('hide');
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Kurye bilgileri güncellendi',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        
+        loadCouriers();
+        loadActiveDeliveries();
+        
+    } catch (error) {
+        console.error('Error updating courier:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kurye güncellenirken hata oluştu',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Delete courier
+async function deleteCourier(courierId) {
+    const result = await Swal.fire({
+        icon: 'warning',
+        title: 'Kurye Sil',
+        text: 'Bu kuryeyi silmek istediğinizden emin misiniz?',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Sil',
+        cancelButtonText: 'İptal'
+    });
+    
+    if (result.isConfirmed) {
+        try {
+            await window.api.deleteCourier(courierId);
+            
+            await Swal.fire({
+                icon: 'success',
+                title: 'Başarılı',
+                text: 'Kurye başarıyla silindi',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            
+            loadCouriers();
+            
+        } catch (error) {
+            console.error('Error deleting courier:', error);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: error.message || 'Kurye silinirken hata oluştu',
+                confirmButtonText: 'Tamam'
+            });
+        }
+    }
+}
+
+// Load active deliveries
+async function loadActiveDeliveries() {
+    try {
+        const deliveries = await window.api.getActiveDeliveries();
+        const container = $('#activeDeliveriesContainer');
+        container.empty();
+        
+        if (deliveries.length === 0) {
+            container.html(`
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="fas fa-box-open fa-3x mb-3"></i>
+                    <p>Aktif teslimat yok</p>
+                </div>
+            `);
+            return;
+        }
+        
+        deliveries.forEach(delivery => {
+            const statusBadge = getDeliveryStatusBadge(delivery.deliveryStatus);
+            
+            const card = `
+                <div class="col-md-6 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-receipt"></i> Sipariş #${delivery.id}
+                                </h6>
+                                ${statusBadge}
+                            </div>
+                            
+                            <div class="mb-2">
+                                <i class="fas fa-motorcycle text-primary"></i>
+                                <strong class="ms-2">${delivery.courierName || 'Kurye atanmamış'}</strong>
+                            </div>
+                            
+                            ${delivery.customerName ? `
+                                <div class="mb-2">
+                                    <i class="fas fa-user text-info"></i>
+                                    <span class="ms-2">${delivery.customerName}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${delivery.customerPhone ? `
+                                <div class="mb-2">
+                                    <i class="fas fa-phone text-success"></i>
+                                    <span class="ms-2">${delivery.customerPhone}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${delivery.deliveryAddress ? `
+                                <div class="mb-2">
+                                    <i class="fas fa-map-marker-alt text-danger"></i>
+                                    <span class="ms-2">${delivery.deliveryAddress}</span>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="mb-3">
+                                <i class="fas fa-money-bill-wave text-success"></i>
+                                <strong class="ms-2">₺${parseFloat(delivery.totalAmount).toFixed(2)}</strong>
+                            </div>
+                            
+                            <button class="btn btn-sm btn-warning w-100" onclick="openDeliveryStatusModal(${delivery.id})">
+                                <i class="fas fa-edit"></i> Durum Güncelle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.append(card);
+        });
+        
+    } catch (error) {
+        console.error('Error loading active deliveries:', error);
+    }
+}
+
+// Get delivery status badge
+function getDeliveryStatusBadge(status) {
+    const badges = {
+        'preparing': '<span class="badge bg-info">Hazırlanıyor</span>',
+        'ready_for_pickup': '<span class="badge bg-warning">Kuryeye Hazır</span>',
+        'picked_up': '<span class="badge bg-primary">Kurye Aldı</span>',
+        'on_the_way': '<span class="badge bg-info">Yolda</span>',
+        'delivered': '<span class="badge bg-success">Teslim Edildi</span>',
+        'cancelled': '<span class="badge bg-danger">İptal</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">Bilinmiyor</span>';
+}
+
+// Open assign courier modal
+function openAssignCourierModal(orderId) {
+    $('#assignOrderId').val(orderId);
+    loadAvailableCouriers();
+    $('#assignCourierModal').modal('show');
+}
+
+// Load available couriers for assignment
+async function loadAvailableCouriers() {
+    try {
+        const couriers = await window.api.getCouriers();
+        const availableCouriers = couriers.filter(c => c.status === 'available');
+        
+        const select = $('#courierSelect');
+        select.empty();
+        
+        if (availableCouriers.length === 0) {
+            select.append('<option value="">Müsait kurye yok</option>');
+            $('#assignCourierBtn').prop('disabled', true);
+            return;
+        }
+        
+        select.append('<option value="">Kurye seçin...</option>');
+        availableCouriers.forEach(courier => {
+            select.append(`<option value="${courier.id}">${courier.name}</option>`);
+        });
+        
+        $('#assignCourierBtn').prop('disabled', false);
+    } catch (error) {
+        console.error('Error loading couriers for assignment:', error);
+        $('#courierSelect').append('<option value="">Hata oluştu</option>');
+        $('#assignCourierBtn').prop('disabled', true);
+    }
+}
+
+// Assign courier to order
+async function assignCourierToOrder() {
+    const orderId = $('#assignOrderId').val();
+    const courierId = $('#courierSelect').val();
+    const note = $('#deliveryNote').val();
+    
+    if (!courierId) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Uyarı',
+            text: 'Lütfen bir kurye seçin',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    try {
+        await window.api.assignCourierToOrder(orderId, courierId);
+        
+        if (note) {
+            await window.api.updateDeliveryStatus(orderId, 'preparing', note);
+        }
+        
+        $('#assignCourierModal').modal('hide');
+        $('#deliveryNote').val('');
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Kurye başarıyla atandı',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        
+        // İlgili sekmeleri yenile
+        loadOrders();
+        loadCouriers();
+        loadActiveDeliveries();
+    } catch (error) {
+        console.error('Error assigning courier:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kurye atanırken hata oluştu. Lütfen tekrar deneyin.',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// Open delivery status modal
+function openDeliveryStatusModal(orderId) {
+    $('#statusOrderId').val(orderId);
+    // Önceki seçimleri temizle
+    $('input[name="deliveryStatus"]').prop('checked', false);
+    $('#statusNote').val('');
+    $('#deliveryStatusModal').modal('show');
+}
+
+// Update delivery status
+async function updateDeliveryStatus() {
+    const orderId = $('#statusOrderId').val();
+    const status = $('input[name="deliveryStatus"]:checked').val();
+    const note = $('#statusNote').val();
+    
+    if (!status) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Uyarı',
+            text: 'Lütfen bir durum seçin',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+    
+    try {
+        await window.api.updateDeliveryStatus(orderId, status, note);
+        
+        $('#deliveryStatusModal').modal('hide');
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Başarılı',
+            text: 'Teslimat durumu güncellendi',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        
+        // İlgili sekmeleri yenile
+        loadOrders();
+        loadCouriers();
+        loadActiveDeliveries();
+        loadOrderHistory();
+    } catch (error) {
+        console.error('Error updating delivery status:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Durum güncellenirken hata oluştu. Lütfen tekrar deneyin.',
+            confirmButtonText: 'Tamam'
+        });
+    }
+}
+
+// View courier detail
+async function viewCourierDetail(courierId) {
+    try {
+        // Kurye bilgilerini yükle
+        const courier = await window.api.getCourierById(courierId);
+        
+        if (!courier) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: 'Kurye bulunamadı',
+                confirmButtonText: 'Tamam'
+            });
+            return;
+        }
+        
+        // Kurye bilgilerini göster
+        $('#detailCourierName').text(courier.name);
+        $('#detailCourierPhone').text(courier.phone);
+        $('#detailCourierPlate').text(courier.vehiclePlate || 'Belirtilmemiş');
+        $('#detailCourierStatus').html(getStatusBadge(courier.status));
+        $('#detailTotalDeliveries').text(courier.totalDeliveries || 0);
+        
+        // Aktif teslimatları kontrol et
+        const activeDeliveries = await window.api.getActiveDeliveries();
+        const courierActiveDeliveries = activeDeliveries.filter(d => d.courierId === courierId);
+        $('#detailActiveDeliveries').text(courierActiveDeliveries.length);
+        
+        // Teslimat geçmişini yükle
+        const deliveries = await window.api.getCourierDeliveries(courierId);
+        const historyContainer = $('#courierDeliveryHistory');
+        historyContainer.empty();
+        
+        if (deliveries.length === 0) {
+            historyContainer.html(`
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-box-open fa-2x mb-2"></i>
+                    <p>Henüz tamamlanmış teslimat yok</p>
+                </div>
+            `);
+        } else {
+            deliveries.forEach(delivery => {
+                const deliveryDate = new Date(delivery.createdAt);
+                const formattedDate = deliveryDate.toLocaleDateString('tr-TR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const card = `
+                    <div class="card mb-2">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-receipt"></i> Sipariş #${delivery.id}
+                                    </h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock"></i> ${formattedDate}
+                                    </small>
+                                </div>
+                                <h6 class="mb-0 text-success">
+                                    ₺${parseFloat(delivery.totalAmount).toFixed(2)}
+                                </h6>
+                            </div>
+                            
+                            ${delivery.customerName ? `
+                                <div class="mt-2">
+                                    <small><i class="fas fa-user"></i> ${delivery.customerName}</small>
+                                </div>
+                            ` : ''}
+                            
+                            ${delivery.customerPhone ? `
+                                <div>
+                                    <small><i class="fas fa-phone"></i> ${delivery.customerPhone}</small>
+                                </div>
+                            ` : ''}
+                            
+                            ${delivery.deliveryAddress ? `
+                                <div>
+                                    <small><i class="fas fa-map-marker-alt"></i> ${delivery.deliveryAddress}</small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                historyContainer.append(card);
+            });
+        }
+        
+        // Modalı aç
+        $('#courierDetailModal').modal('show');
+        
+    } catch (error) {
+        console.error('Error loading courier detail:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Hata',
+            text: 'Kurye detayları yüklenirken hata oluştu',
             confirmButtonText: 'Tamam'
         });
     }

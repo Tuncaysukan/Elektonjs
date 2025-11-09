@@ -115,6 +115,42 @@ class Database {
       note: {
         type: DataTypes.TEXT,
         allowNull: true
+      },
+      // Teslimat alanları
+      courierId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'courier_id'
+      },
+      deliveryStatus: {
+        type: DataTypes.ENUM('none', 'preparing', 'ready_for_pickup', 'picked_up', 'on_the_way', 'delivered', 'cancelled'),
+        defaultValue: 'none',
+        field: 'delivery_status'
+      },
+      deliveryAddress: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'delivery_address'
+      },
+      deliveryNote: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'delivery_note'
+      },
+      customerName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'customer_name'
+      },
+      customerPhone: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'customer_phone'
+      },
+      estimatedDeliveryTime: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'estimated_delivery_time'
       }
     }, {
       tableName: 'orders',
@@ -248,6 +284,47 @@ class Database {
       updatedAt: 'updated_at'
     });
     
+    // Define Courier model
+    this.Courier = this.sequelize.define('Courier', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      phone: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      vehiclePlate: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'vehicle_plate'
+      },
+      status: {
+        type: DataTypes.ENUM('available', 'on_delivery', 'off_duty'),
+        defaultValue: 'available'
+      },
+      totalDeliveries: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        field: 'total_deliveries'
+      },
+      activeDeliveryId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'active_delivery_id'
+      }
+    }, {
+      tableName: 'couriers',
+      timestamps: true,
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
+    });
+    
     // Define OrderItem model
     this.OrderItem = this.sequelize.define('OrderItem', {
       id: {
@@ -282,10 +359,12 @@ class Database {
     
     // Define relationships
     this.Order.belongsTo(this.Table, { foreignKey: 'table_id' });
+    this.Order.belongsTo(this.Courier, { foreignKey: 'courier_id' });
     this.OrderItem.belongsTo(this.Order, { foreignKey: 'order_id' });
     this.OrderItem.belongsTo(this.Product, { foreignKey: 'product_id' });
     this.OnlineOrder.belongsTo(this.Order, { foreignKey: 'order_id' });
     this.ProductMapping.belongsTo(this.Product, { foreignKey: 'local_product_id' });
+    this.Courier.hasMany(this.Order, { foreignKey: 'courier_id' });
     
     // Sync models with database
     await this.sequelize.sync({ alter: true });
@@ -757,6 +836,250 @@ class Database {
         role: 'admin'
       });
     }
+  }
+  
+  // ==================== COURIER OPERATIONS ====================
+  
+  async createCourier(courierData) {
+    const courier = await this.Courier.create(courierData);
+    return courier.get({ plain: true });
+  }
+  
+  async getCouriers() {
+    const couriers = await this.Courier.findAll({ 
+      raw: true,
+      order: [['created_at', 'DESC']]
+    });
+    
+    return couriers.map(c => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      vehiclePlate: c.vehicle_plate || c.vehiclePlate,
+      status: c.status,
+      totalDeliveries: c.total_deliveries || c.totalDeliveries || 0,
+      activeDeliveryId: c.active_delivery_id || c.activeDeliveryId,
+      createdAt: c.created_at || c.createdAt,
+      updatedAt: c.updated_at || c.updatedAt
+    }));
+  }
+  
+  async getCourierById(courierId) {
+    const courier = await this.Courier.findByPk(courierId, { raw: true });
+    if (!courier) return null;
+    
+    return {
+      id: courier.id,
+      name: courier.name,
+      phone: courier.phone,
+      vehiclePlate: courier.vehicle_plate || courier.vehiclePlate,
+      status: courier.status,
+      totalDeliveries: courier.total_deliveries || courier.totalDeliveries || 0,
+      activeDeliveryId: courier.active_delivery_id || courier.activeDeliveryId,
+      createdAt: courier.created_at || courier.createdAt,
+      updatedAt: courier.updated_at || courier.updatedAt
+    };
+  }
+  
+  async updateCourier(courierId, courierData) {
+    await this.Courier.update(courierData, {
+      where: { id: courierId }
+    });
+    return await this.getCourierById(courierId);
+  }
+  
+  async deleteCourier(courierId) {
+    // Önce bu kuryenin aktif teslimatı var mı kontrol et
+    const activeDeliveries = await this.Order.count({
+      where: {
+        courier_id: courierId,
+        delivery_status: ['preparing', 'ready_for_pickup', 'picked_up', 'on_the_way']
+      }
+    });
+    
+    if (activeDeliveries > 0) {
+      throw new Error('Bu kuryenin aktif teslimatı var. Önce teslimatları tamamlamalısınız.');
+    }
+    
+    await this.Courier.destroy({
+      where: { id: courierId }
+    });
+    
+    return true;
+  }
+  
+  async assignCourierToOrder(orderId, courierId) {
+    // Kuryeyi kontrol et
+    const courier = await this.Courier.findByPk(courierId);
+    if (!courier) {
+      throw new Error('Kurye bulunamadı');
+    }
+    
+    // Siparişi kontrol et
+    const order = await this.Order.findByPk(orderId);
+    if (!order) {
+      throw new Error('Sipariş bulunamadı');
+    }
+    
+    // Siparişin zaten bir kuryesi var mı kontrol et
+    if (order.courier_id && order.delivery_status !== 'delivered' && order.delivery_status !== 'cancelled') {
+      throw new Error('Bu siparişe zaten bir kurye atanmış. Önce mevcut kuryeyi kaldırmalısınız.');
+    }
+    
+    // Siparişi güncelle
+    await this.Order.update({
+      courier_id: courierId,
+      delivery_status: 'preparing'
+    }, {
+      where: { id: orderId }
+    });
+    
+    // Kuryenin durumunu güncelle
+    await this.Courier.update({
+      status: 'on_delivery',
+      active_delivery_id: orderId
+    }, {
+      where: { id: courierId }
+    });
+    
+    return true;
+  }
+  
+  async autoAssignCourier(orderId) {
+    // Siparişi kontrol et
+    const order = await this.Order.findByPk(orderId);
+    if (!order) {
+      throw new Error('Sipariş bulunamadı');
+    }
+    
+    // Siparişin zaten bir kuryesi var mı kontrol et
+    if (order.courier_id) {
+      console.log('Siparişe zaten kurye atanmış, otomatik atama yapılmadı');
+      return false;
+    }
+    
+    // Müsait kuryelerden en az teslimatı olan kuryeyi bul
+    const availableCouriers = await this.Courier.findAll({
+      where: { status: 'available' },
+      order: [['total_deliveries', 'ASC']],
+      raw: true
+    });
+    
+    if (availableCouriers.length === 0) {
+      console.log('Müsait kurye bulunamadı, otomatik atama yapılamadı');
+      return false;
+    }
+    
+    // İlk müsait kuryeyi ata
+    const courier = availableCouriers[0];
+    await this.assignCourierToOrder(orderId, courier.id);
+    
+    console.log(`Sipariş #${orderId}, otomatik olarak ${courier.name} kurye atandı`);
+    return true;
+  }
+  
+  async updateDeliveryStatus(orderId, status, note = null) {
+    const order = await this.Order.findByPk(orderId);
+    if (!order) {
+      throw new Error('Sipariş bulunamadı');
+    }
+    
+    const updateData = {
+      delivery_status: status
+    };
+    
+    if (note) {
+      updateData.delivery_note = note;
+    }
+    
+    // Teslimat tamamlandıysa
+    if (status === 'delivered') {
+      const courier = await this.Courier.findByPk(order.courier_id);
+      if (courier) {
+        // Kurye istatistiklerini güncelle
+        await this.Courier.update({
+          status: 'available',
+          active_delivery_id: null,
+          total_deliveries: (courier.total_deliveries || 0) + 1
+        }, {
+          where: { id: order.courier_id }
+        });
+      }
+    }
+    
+    await this.Order.update(updateData, {
+      where: { id: orderId }
+    });
+    
+    return true;
+  }
+  
+  async getActiveDeliveries() {
+    const deliveries = await this.Order.findAll({
+      where: {
+        delivery_status: ['preparing', 'ready_for_pickup', 'picked_up', 'on_the_way']
+      },
+      include: [
+        { model: this.Courier },
+        { model: this.Table }
+      ],
+      raw: false
+    });
+    
+    return deliveries.map(d => {
+      const plain = d.get({ plain: true });
+      return {
+        id: plain.id,
+        tableId: plain.table_id || plain.tableId,
+        tableName: plain.Table?.name,
+        totalAmount: plain.total_amount || plain.totalAmount,
+        deliveryStatus: plain.delivery_status || plain.deliveryStatus,
+        deliveryAddress: plain.delivery_address || plain.deliveryAddress,
+        deliveryNote: plain.delivery_note || plain.deliveryNote,
+        customerName: plain.customer_name || plain.customerName,
+        customerPhone: plain.customer_phone || plain.customerPhone,
+        estimatedDeliveryTime: plain.estimated_delivery_time || plain.estimatedDeliveryTime,
+        courierId: plain.courier_id || plain.courierId,
+        courierName: plain.Courier?.name,
+        createdAt: plain.created_at || plain.createdAt
+      };
+    });
+  }
+  
+  async getCourierDeliveries(courierId, startDate = null, endDate = null) {
+    const whereClause = {
+      courier_id: courierId,
+      delivery_status: 'delivered'
+    };
+    
+    if (startDate && endDate) {
+      whereClause.created_at = {
+        [this.sequelize.Sequelize.Op.between]: [startDate, endDate]
+      };
+    }
+    
+    const deliveries = await this.Order.findAll({
+      where: whereClause,
+      include: [{ model: this.Table }],
+      raw: false,
+      order: [['created_at', 'DESC']]
+    });
+    
+    return deliveries.map(d => {
+      const plain = d.get({ plain: true });
+      return {
+        id: plain.id,
+        tableId: plain.table_id || plain.tableId,
+        tableName: plain.Table?.name,
+        totalAmount: plain.total_amount || plain.totalAmount,
+        deliveryStatus: plain.delivery_status || plain.deliveryStatus,
+        deliveryAddress: plain.delivery_address || plain.deliveryAddress,
+        customerName: plain.customer_name || plain.customerName,
+        customerPhone: plain.customer_phone || plain.customerPhone,
+        createdAt: plain.created_at || plain.createdAt,
+        updatedAt: plain.updated_at || plain.updatedAt
+      };
+    });
   }
 }
 

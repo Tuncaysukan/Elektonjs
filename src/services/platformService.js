@@ -229,10 +229,13 @@ class PlatformService {
         });
       }
       
-      // Sipariş oluştur
+      // Sipariş oluştur (müşteri bilgileri ile)
       const order = await this.database.createOrder({
         tableId: table.id,
-        status: 'open'
+        status: 'open',
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        deliveryAddress: customerInfo.address
       });
       
       // Online sipariş ile local siparişi ilişkilendir
@@ -264,6 +267,19 @@ class PlatformService {
         } else {
           console.warn(`Ürün eşleştirmesi bulunamadı: ${item.platformProductName}`);
         }
+      }
+      
+      // Otomatik kurye ataması yap
+      try {
+        const courierAssigned = await this.database.autoAssignCourier(order.id);
+        if (courierAssigned) {
+          console.log(`Online sipariş #${order.id} için otomatik kurye atandı`);
+        } else {
+          console.log(`Online sipariş #${order.id} için kurye atanamadı (müsait kurye yok)`);
+        }
+      } catch (error) {
+        console.error('Otomatik kurye atama hatası:', error);
+        // Hata olsa bile sipariş oluşturulmuş olduğu için devam et
       }
       
       return {

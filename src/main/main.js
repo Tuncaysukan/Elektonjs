@@ -223,3 +223,45 @@ ipcMain.handle('create-product-mapping', async (event, mappingData) => {
 ipcMain.handle('delete-product-mapping', async (event, mappingId) => {
   return await database.ProductMapping.destroy({ where: { id: mappingId } });
 });
+
+// ==================== COURIER IPC HANDLERS ====================
+
+ipcMain.handle('create-courier', async (event, courierData) => {
+  return await database.createCourier(courierData);
+});
+
+ipcMain.handle('get-couriers', async (event) => {
+  return await database.getCouriers();
+});
+
+ipcMain.handle('get-courier-by-id', async (event, courierId) => {
+  return await database.getCourierById(courierId);
+});
+
+ipcMain.handle('update-courier', async (event, courierId, courierData) => {
+  return await database.updateCourier(courierId, courierData);
+});
+
+ipcMain.handle('delete-courier', async (event, courierId) => {
+  return await database.deleteCourier(courierId);
+});
+
+ipcMain.handle('assign-courier-to-order', async (event, orderId, courierId) => {
+  return await database.assignCourierToOrder(orderId, courierId);
+});
+
+ipcMain.handle('update-delivery-status', async (event, orderId, status, note) => {
+  return await database.updateDeliveryStatus(orderId, status, note);
+});
+
+ipcMain.handle('get-active-deliveries', async (event) => {
+  return await database.getActiveDeliveries();
+});
+
+ipcMain.handle('get-courier-deliveries', async (event, courierId, startDate, endDate) => {
+  return await database.getCourierDeliveries(courierId, startDate, endDate);
+});
+
+ipcMain.handle('auto-assign-courier', async (event, orderId) => {
+  return await database.autoAssignCourier(orderId);
+});

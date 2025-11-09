@@ -44,5 +44,17 @@ contextBridge.exposeInMainWorld('api', {
   getOnlineOrders: () => ipcRenderer.invoke('get-online-orders'),
   getProductMappings: (platform) => ipcRenderer.invoke('get-product-mappings', platform),
   createProductMapping: (mappingData) => ipcRenderer.invoke('create-product-mapping', mappingData),
-  deleteProductMapping: (mappingId) => ipcRenderer.invoke('delete-product-mapping', mappingId)
+  deleteProductMapping: (mappingId) => ipcRenderer.invoke('delete-product-mapping', mappingId),
+  
+  // Courier operations
+  createCourier: (courierData) => ipcRenderer.invoke('create-courier', courierData),
+  getCouriers: () => ipcRenderer.invoke('get-couriers'),
+  getCourierById: (courierId) => ipcRenderer.invoke('get-courier-by-id', courierId),
+  updateCourier: (courierId, courierData) => ipcRenderer.invoke('update-courier', courierId, courierData),
+  deleteCourier: (courierId) => ipcRenderer.invoke('delete-courier', courierId),
+  assignCourierToOrder: (orderId, courierId) => ipcRenderer.invoke('assign-courier-to-order', orderId, courierId),
+  updateDeliveryStatus: (orderId, status, note) => ipcRenderer.invoke('update-delivery-status', orderId, status, note),
+  getActiveDeliveries: () => ipcRenderer.invoke('get-active-deliveries'),
+  getCourierDeliveries: (courierId, startDate, endDate) => ipcRenderer.invoke('get-courier-deliveries', courierId, startDate, endDate),
+  autoAssignCourier: (orderId) => ipcRenderer.invoke('auto-assign-courier', orderId)
 });
